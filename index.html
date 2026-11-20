@@ -363,7 +363,7 @@
     #layer-veil {
       position: fixed; inset: 0; z-index: 9000; pointer-events: none;
       opacity: 0; background: radial-gradient(circle at center, rgba(16,185,129,.10) 0%, rgba(2,6,10,.72) 60%, rgba(2,6,10,.92) 100%);
-      transition: opacity .18s ease;
+      transition: opacity .22s cubic-bezier(.22,.61,.36,1);
     }
     #layer-veil.veil-on { opacity: 1; }
     /* Barrido de scanline/glow: una banda tenue que recorre la pantalla. */
@@ -373,17 +373,21 @@
       background: linear-gradient(180deg, transparent 0%, rgba(74,246,38,.06) 30%, rgba(129,217,208,.22) 50%, rgba(74,246,38,.06) 70%, transparent 100%);
       mix-blend-mode: screen; opacity: 0;
     }
-    #layer-veil.veil-on::after { animation: veil-sweep .5s ease-out forwards; }
+    /* Barrido con el mismo easing que cascada/app-enter + una leve deriva lateral
+       para que el velo se sienta cohesionado y "premium" (<=.55s). */
+    #layer-veil.veil-on::after { animation: veil-sweep .52s cubic-bezier(.22,.61,.36,1) forwards; }
     @keyframes veil-sweep {
-      0% { top: -30%; opacity: 0; }
-      15% { opacity: 1; }
-      100% { top: 110%; opacity: 0; }
+      0%   { top: -30%; opacity: 0; transform: translateX(-2%); }
+      15%  { opacity: 1; }
+      100% { top: 110%; opacity: 0; transform: translateX(2%); }
     }
-    /* Entrada del contenedor: leve escala + desenfoque que se resuelve. */
-    .app-container.app-enter { animation: app-enter-fx .42s ease-out; }
+    /* Entrada del contenedor: leve escala + desenfoque + un pequeño ascenso
+       direccional (translateY) que asienta el panel hacia arriba, igual que la
+       dirección de la cascada; mismo easing que velo/cascada (<=.45s). */
+    .app-container.app-enter { animation: app-enter-fx .44s cubic-bezier(.22,.61,.36,1); }
     @keyframes app-enter-fx {
-      0% { transform: scale(.985); filter: blur(5px) brightness(1.08); }
-      100% { transform: scale(1); filter: blur(0) brightness(1); }
+      0%   { transform: translateY(14px) scale(.985); filter: blur(5px) brightness(1.08); }
+      100% { transform: translateY(0) scale(1); filter: blur(0) brightness(1); }
     }
     /* Intro->hub: mismo lenguaje, un pelín más de glow al abrir el hub. */
     #intro-video-overlay.fade-out #intro-video-player { animation: intro-dissolve .8s ease forwards; }
@@ -403,22 +407,24 @@
           junto al .app-enter existente.
        ========================================= */
     .cascade > * {
-      animation: cascade-rise .3s ease-out both;
+      animation: cascade-rise .42s cubic-bezier(.22,.61,.36,1) both;
       will-change: transform, opacity;
     }
+    /* Entrada más perceptible y "tipo SO": ascenso mayor (22px) + leve escala
+       (.965->1) + desenfoque que se resuelve. `both` sostiene el estado final. */
     @keyframes cascade-rise {
-      0%   { opacity: 0; transform: translateY(10px); }
-      100% { opacity: 1; transform: translateY(0); }
+      0%   { opacity: 0; transform: translateY(22px) scale(.965); filter: blur(4px); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
     }
-    /* Retardo incremental por hijo (~66ms): secuencia corta, nunca arrastra. */
+    /* Retardo incremental por hijo (~90ms): escalonado claramente perceptible. */
     .cascade > *:nth-child(1) { animation-delay: 0ms; }
-    .cascade > *:nth-child(2) { animation-delay: 66ms; }
-    .cascade > *:nth-child(3) { animation-delay: 132ms; }
-    .cascade > *:nth-child(4) { animation-delay: 198ms; }
-    .cascade > *:nth-child(5) { animation-delay: 264ms; }
-    .cascade > *:nth-child(6) { animation-delay: 330ms; }
-    .cascade > *:nth-child(7) { animation-delay: 396ms; }
-    .cascade > *:nth-child(n+8) { animation-delay: 462ms; }
+    .cascade > *:nth-child(2) { animation-delay: 90ms; }
+    .cascade > *:nth-child(3) { animation-delay: 180ms; }
+    .cascade > *:nth-child(4) { animation-delay: 270ms; }
+    .cascade > *:nth-child(5) { animation-delay: 360ms; }
+    .cascade > *:nth-child(6) { animation-delay: 450ms; }
+    .cascade > *:nth-child(7) { animation-delay: 540ms; }
+    .cascade > *:nth-child(n+8) { animation-delay: 600ms; }
 
     /* MOVIMIENTO REDUCIDO: desactiva scale/blur/sweep; conserva solo fundidos de opacidad. */
     @media (prefers-reduced-motion: reduce) {
@@ -426,8 +432,9 @@
       #layer-veil.veil-on::after { animation: none; opacity: 0; }
       .app-container.app-enter { animation: none; }
       #intro-video-overlay.fade-out #intro-video-player { animation: none; }
-      /* Sin cascada: el contenido aparece de golpe, sin desplazamiento ni escalonado. */
-      .cascade > * { animation: none; opacity: 1; transform: none; }
+      /* Sin cascada: el contenido aparece de golpe, sin desplazamiento, escala,
+         desenfoque ni escalonado. */
+      .cascade > * { animation: none; opacity: 1; transform: none; filter: none; }
     }
 
     /* =========================================
@@ -516,22 +523,150 @@
     .lyra-scope    .micro-title { --mt-accent: #4af626; }
     .cronos-scope  .micro-title { --mt-accent: var(--term-phosphor, #e2e8f0); }
 
-    /* Parpadeo CRT muy leve y lento: variaciones minúsculas de opacidad y brillo
-       del resplandor; nunca desplaza ni emborrona el texto (sigue legible). */
+    /* Parpadeo CRT lento pero un poco más vivo: varios "dips" breves de opacidad y
+       una pequeña variación del glow (via text-shadow). Nunca desplaza ni emborrona
+       el texto (sigue legible); las caídas no bajan de ~0.86. Periodo 5.5s. */
     @keyframes micro-flicker {
-      0%, 100% { opacity: 1; }
-      47%      { opacity: 1; }
-      48%      { opacity: .94; }
-      49%      { opacity: 1; }
-      72%      { opacity: 1; }
-      73%      { opacity: .97; }
-      74%      { opacity: 1; }
+      0%, 100% { opacity: 1;
+        text-shadow:
+          0 0 .4px color-mix(in srgb, var(--mt-accent) 70%, transparent),
+          -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 28%, transparent),
+           1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 24%, transparent),
+          0 0 10px color-mix(in srgb, var(--mt-accent) 24%, transparent); }
+      18%  { opacity: 1; }
+      19%  { opacity: .88; }
+      20%  { opacity: 1; }
+      40%  { opacity: 1;
+        text-shadow:
+          0 0 .5px color-mix(in srgb, var(--mt-accent) 80%, transparent),
+          -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 32%, transparent),
+           1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 28%, transparent),
+          0 0 15px color-mix(in srgb, var(--mt-accent) 36%, transparent); }
+      47%  { opacity: 1; }
+      48%  { opacity: .9; }
+      49%  { opacity: 1; }
+      50%  { opacity: .86; }
+      51%  { opacity: 1; }
+      72%  { opacity: 1; }
+      73%  { opacity: .93; }
+      74%  { opacity: 1; }
+      88%  { opacity: 1; }
+      89%  { opacity: .9; }
+      90%  { opacity: 1; }
     }
 
-    /* MOVIMIENTO REDUCIDO: sin parpadeo; se conserva solo el resplandor/sombra estática. */
+    /* =========================================
+       TÍTULOS: ENTRADAS DE UNA SOLA VEZ POR TERMINAL (FEAT-005)
+       Tres clases .mt-enter-* aditivas a .micro-title: mientras la entrada está
+       presente, sustituye la animación idle (una sola vez, both/forwards) y al
+       retirarse la clase (desde playTitleIntro) el parpadeo idle de .micro-title
+       REANUDA sin salto, porque la entrada ARRANCA y TERMINA en el estado normal
+       renderizado. No cambian layout/tamaño de forma permanente. Se aplican/retiran
+       con el patrón off->reflow->on para que re-entrar las reproduzca.
+       ========================================= */
+
+    /* (a) REFUGIO: "señal degradada" cálida/polvorienta -> jitter horizontal
+       áspero + oleada de glow arena (#d4a373) + stutters de opacidad que se
+       asientan. No usa blur (sigue legible), sólo translateX minúsculo. */
+    .mt-enter-refugio { animation: mt-refugio-enter 1s steps(1, end) both; }
+    @keyframes mt-refugio-enter {
+      0%   { opacity: .2; transform: translateX(-3px);
+             text-shadow: 0 0 2px #d4a373, 0 0 18px rgba(212,163,115,.9); }
+      12%  { opacity: .9;  transform: translateX(3px); }
+      22%  { opacity: .45; transform: translateX(-2px); }
+      34%  { opacity: 1;   transform: translateX(2px);
+             text-shadow: 0 0 2px #d4a373, 0 0 22px rgba(212,163,115,.85); }
+      46%  { opacity: .7;  transform: translateX(-1px); }
+      58%  { opacity: 1;   transform: translateX(1px); }
+      70%  { opacity: .85; transform: translateX(0); }
+      82%  { opacity: 1;   transform: translateX(0);
+             text-shadow: 0 0 1px #d4a373, 0 0 14px rgba(212,163,115,.5); }
+      100% { opacity: 1;   transform: translateX(0); }
+    }
+
+    /* (b) LYRA: encendido CRT verde-fósforo -> arranca como una línea brillante
+       aplastada scaleY(.02) con bloom verde y multi-flicker rápido que se expande
+       a 1. Un cursor "_" parpadea el primer ~1s y luego se desvanece. */
+    .mt-enter-lyra {
+      transform-origin: center;
+      animation: mt-lyra-enter 1.2s cubic-bezier(.16,.84,.3,1) both;
+    }
+    @keyframes mt-lyra-enter {
+      0%   { opacity: 0;  transform: scaleY(.02);
+             text-shadow: 0 0 10px #4af626, 0 0 26px rgba(74,246,38,.95); }
+      14%  { opacity: 1;  transform: scaleY(.02); }
+      22%  { opacity: .3; transform: scaleY(.6); }
+      34%  { opacity: 1;  transform: scaleY(1.08);
+             text-shadow: 0 0 8px #4af626, 0 0 30px rgba(74,246,38,.9); }
+      42%  { opacity: .6; transform: scaleY(.98); }
+      52%  { opacity: 1;  transform: scaleY(1.02); }
+      62%  { opacity: .85; transform: scaleY(1); }
+      100% { opacity: 1;  transform: scaleY(1);
+             text-shadow: 0 0 .5px #4af626, 0 0 12px rgba(74,246,38,.35); }
+    }
+    .mt-enter-lyra::after {
+      content: '_';
+      margin-left: .08em;
+      animation: mt-lyra-cursor 1.1s steps(1, end) both;
+    }
+    @keyframes mt-lyra-cursor {
+      0%, 49%  { opacity: 1; }
+      50%, 99% { opacity: 0; }
+      85%      { opacity: .4; }
+      100%     { opacity: 0; }
+    }
+
+    /* (c) CRONOS: jolt glitch frío de aberración cromática -> split RGB más duro
+       (offsets cian/magenta grandes) con stutter steps() y un par de saltos
+       translateX que se resuelven en el idle calmado. */
+    .mt-enter-cronos { animation: mt-cronos-enter .9s steps(8, end) both; }
+    @keyframes mt-cronos-enter {
+      0%   { opacity: .3; transform: translateX(-6px);
+             text-shadow: -6px 0 0 rgba(0,255,255,.8), 6px 0 0 rgba(255,0,255,.8); }
+      18%  { opacity: 1;  transform: translateX(5px);
+             text-shadow: 5px 0 0 rgba(0,255,255,.75), -5px 0 0 rgba(255,0,255,.75); }
+      32%  { opacity: .6; transform: translateX(-4px);
+             text-shadow: -4px 0 0 rgba(0,255,255,.7), 4px 0 0 rgba(255,0,255,.7); }
+      48%  { opacity: 1;  transform: translateX(3px);
+             text-shadow: 3px 0 0 rgba(0,255,255,.6), -3px 0 0 rgba(255,0,255,.6); }
+      64%  { opacity: .8; transform: translateX(-2px);
+             text-shadow: -2px 0 0 rgba(0,255,255,.45), 2px 0 0 rgba(255,0,255,.45); }
+      80%  { opacity: 1;  transform: translateX(1px);
+             text-shadow: 1px 0 0 rgba(0,255,255,.3), -1px 0 0 rgba(255,0,255,.3); }
+      100% { opacity: 1;  transform: translateX(0);
+             text-shadow:
+               0 0 .4px color-mix(in srgb, var(--mt-accent) 70%, transparent),
+               -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 28%, transparent),
+                1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 24%, transparent),
+               0 0 10px color-mix(in srgb, var(--mt-accent) 24%, transparent); }
+    }
+
+    /* MOVIMIENTO REDUCIDO: sin parpadeo idle NI entradas; sólo el resplandor/sombra
+       estática. Las tres entradas se neutralizan a estado final instantáneo. */
     @media (prefers-reduced-motion: reduce) {
       .micro-title { animation: none; opacity: 1; }
+      .mt-enter-refugio,
+      .mt-enter-lyra,
+      .mt-enter-cronos { animation: none; opacity: 1; transform: none; }
+      .mt-enter-lyra::after { content: none; animation: none; }
     }
+
+    /* =========================================
+       SORPRESA (FEAT-005): LIENZO AMBIENTAL DEL HUB
+       Un starfield/niebla de partículas a la deriva en la paleta esmeralda, SOLO
+       detrás del hub. Es puramente decorativo: pointer-events:none para no capturar
+       jamás clics ni scroll, y z-index 0 para quedar DETRÁS del contenido narrativo
+       (que la narrative-area/sidebar elevan por encima). El bucle rAF se gestiona en
+       JS (HubAmbient) y se PAUSA cuando el hub no es la app activa; bajo
+       prefers-reduced-motion se pinta un único fotograma estático y no se anima.
+       ========================================= */
+    #hub-ambient-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; display: block;
+      opacity: .55;
+    }
+    .hub-scope .narrative-area,
+    .hub-scope .sidebar { position: relative; z-index: 1; }
   </style>
 </head>
 <body>
@@ -581,6 +716,10 @@
 
   <!-- APP 1: HUB CENTRAL (PÁRAMO OMEGA) -->
   <div id="hub-container" class="app-container active hub-scope">
+    <!-- SORPRESA (FEAT-005): lienzo ambiental con partículas a la deriva en paleta
+         esmeralda SOLO detrás del hub. Decorativo: pointer-events:none y z-index
+         bajo para que nunca capture clics/scroll y quede DETRÁS del contenido. -->
+    <canvas id="hub-ambient-canvas" aria-hidden="true"></canvas>
     <div class="narrative-area" id="narrative-area">
       <div id="contenido-escena"></div>
     </div>
@@ -798,6 +937,8 @@
 
         unlockGlobalAudio();
         HubApp.forceStartAmbient();
+        // SORPRESA (FEAT-005): arranca el lienzo ambiental del hub al entrar desde la intro.
+        if (window.HubAmbient) { HubAmbient.start(); HubAmbient.intensify(); }
       }
     };
 
@@ -959,14 +1100,52 @@
       // un contenedor para que sus hijos directos aparezcan uno tras otro. Es
       // puramente visual (sólo toca una clase CSS, nunca el markup ni la lógica).
       // Toggle off -> reflow -> on para que la animación SIEMPRE se reinicie limpio
-      // en cada navegación/render y los retardos no se apilen. La clase se retira
-      // tras ~620ms (fin de la secuencia) para no dejar estado pegado.
+      // en cada navegación/render y los retardos no se apilen. La vida de la clase
+      // se CALCULA a partir del nº de hijos (stagger 90ms * (n-1) + ~420ms del ítem
+      // + buffer), topada a ~1s, para que cubra TODA la secuencia y no la corte a la
+      // mitad. Como el keyframe usa `both`, el estado final se sostiene igual.
       playCascade: function(el) {
         if (!el) return;
         el.classList.remove('cascade');
         void el.offsetWidth; // reflow: reinicia la animación aunque ya estuviera activa
         el.classList.add('cascade');
-        setTimeout(() => { el.classList.remove('cascade'); }, 620);
+        // Delay máx del último hijo: escalera topada en 600ms (nth-child(n+8)).
+        const n = el.children ? el.children.length : 0;
+        const lastDelay = Math.min(Math.max(n - 1, 0) * 90, 600);
+        const lifetime = Math.min(lastDelay + 420 + 60, 1080); // dura toda la secuencia
+        // Guardamos el token para que renders solapados no borren la clase recién
+        // reiniciada: cada llamada invalida el timeout de la anterior.
+        const token = (this._cascadeToken = (this._cascadeToken || 0) + 1);
+        setTimeout(() => {
+          if (this._cascadeToken === token) el.classList.remove('cascade');
+        }, lifetime);
+      },
+
+      // ENTRADA DE TÍTULO (FEAT-005): aplica la animación de una sola vez propia de
+      // cada terminal al/los .micro-title visible(s) en ese momento. Patrón
+      // off -> reflow -> on para que re-entrar la reproduzca, y la clase se retira
+      // con un setTimeout acorde a la duración para que nunca se quede pegada.
+      // Es puramente aditivo y visual: no toca audio, guardia ni navegación.
+      // Bajo prefers-reduced-motion NO añade nada (la entrada se omite por completo).
+      playTitleIntro: function(appId) {
+        const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduced) return;
+        // Título(s) visible(s) por terminal y su clase/duración de entrada.
+        const map = {
+          refugio: { ids: ['ref-titulo-escenario'], cls: 'mt-enter-refugio', dur: 1000 },
+          lyra:    { ids: ['lyra-scene-title'],     cls: 'mt-enter-lyra',    dur: 1200 },
+          cronos:  { ids: ['cro-node-title'],       cls: 'mt-enter-cronos',  dur: 900 }
+        };
+        const cfg = map[appId];
+        if (!cfg) return; // el hub no tiene entrada de título
+        cfg.ids.forEach(id => {
+          const elTitle = document.getElementById(id);
+          if (!elTitle) return;
+          elTitle.classList.remove(cfg.cls);
+          void elTitle.offsetWidth; // reflow: reinicia la animación aunque ya estuviera
+          elTitle.classList.add(cfg.cls);
+          setTimeout(() => elTitle.classList.remove(cfg.cls), cfg.dur + 40);
+        });
       },
 
       // FEAT-004: guardia en vuelo para la animación post-decisión. Es independiente
@@ -1045,12 +1224,15 @@
           void incoming.offsetWidth;
           requestAnimationFrame(() => {
             incoming.classList.remove('app-fade-out');
-            // Leve scale+blur de entrada (lenguaje futurista compartido).
+            // Leve scale+blur+ascenso de entrada (lenguaje futurista compartido).
             incoming.classList.add('app-enter');
             setTimeout(() => incoming.classList.remove('app-enter'), 460);
-            // Cascada tipo SO: los bloques principales del contenedor entrante
-            // aparecen escalonados junto al app-enter (aditivo, sólo visual).
-            this.playCascade(incoming);
+            // UNMASK: la cascada es la protagonista, así que arranca un pequeño beat
+            // DESPUÉS de que el fundido de opacidad del contenedor haya empezado a
+            // resolverse (~140ms), en vez de bajo el mismo instante que .app-enter.
+            // Los hijos sólo cambian opacity/transform/filter: el puntero sigue
+            // activo y los botones son clicables a medida que aparecen.
+            setTimeout(() => this.playCascade(incoming), 140);
           });
 
           document.getElementById('btn-global-back').style.display = (appId === 'hub') ? 'none' : 'flex';
@@ -1064,6 +1246,17 @@
             if(appId === 'refugio') { RefugioApp.init(); RefugioApp.forceAudio(); }
             if(appId === 'lyra') { LyraApp.bootSystem(); LyraApp.forceAudio(); }
             if(appId === 'cronos') { CronosApp.boot(); CronosApp.forceAudio(); }
+            // ENTRADA DE TÍTULO (FEAT-005): tras el init/boot (ya existe el título),
+            // dispara la animación de entrada propia de cada terminal. Aditivo y
+            // visual; el hub no tiene entrada de título. Honra reduced-motion dentro.
+            this.playTitleIntro(appId);
+            // SORPRESA (FEAT-005): pausa/arranca el lienzo ambiental según el hub
+            // sea o no la app activa, para no quemar CPU en las terminales, y da un
+            // breve realce al navegar.
+            if (window.HubAmbient) {
+              if (appId === 'hub') { HubAmbient.start(); HubAmbient.intensify(); }
+              else HubAmbient.stop();
+            }
           } finally {
             // Liberar la guardia SIEMPRE al final de activate(), así nunca se atasca.
             this.transitioning = false;
@@ -1213,6 +1406,8 @@
           // lectura). Sólo añade/quita la clase .cascade en el contenedor; no altera
           // el markup ni el selector de SFX ni los onclick de elegirOpcion.
           AppManager.playCascade(contenido);
+          // SORPRESA (FEAT-005): breve realce del lienzo ambiental al cambiar de escena.
+          if (window.HubAmbient) HubAmbient.intensify();
           document.querySelectorAll('.hub-scope .progress-step').forEach(paso => paso.classList.toggle('active', paso.dataset.scene === id));
           document.getElementById('multimedia-info').innerHTML = `<button class="sound-control mt-2" onclick="HubApp.escucharEscena()">▶ Leer Escena Actual</button>`;
           
@@ -1554,6 +1749,142 @@
       }
     })();
 
+    // =========================================
+    // SORPRESA (FEAT-005): LIENZO AMBIENTAL DEL HUB  ("emerald drift field")
+    // ELECCIÓN: un starfield/niebla de partículas (unas pocas docenas) a la deriva
+    // lenta en la paleta esmeralda, SOLO detrás del hub. Reacciona sutilmente al
+    // movimiento del puntero (las partículas cercanas derivan hacia él) y recibe un
+    // breve "intensify" al navegar/renderizar una escena. Es decorativo:
+    //   - <canvas> con pointer-events:none y z-index bajo (nunca captura clics/scroll
+    //     y queda detrás del contenido).
+    //   - movido por requestAnimationFrame; cuenta de partículas y DPR tapados para
+    //     mantenerlo fluido (objetivo ~60fps) y degradar en pantallas pequeñas.
+    //   - el bucle rAF se PAUSA cuando el hub no es la app activa (HubAmbient.stop),
+    //     para no gastar CPU en las terminales.
+    //   - bajo prefers-reduced-motion pinta UN único fotograma estático y no anima.
+    // Sin librerías nuevas: Canvas 2D nativo.
+    // =========================================
+    const HubAmbient = window.HubAmbient = (function() {
+      let canvas, ctx, raf = null, running = false;
+      let w = 0, h = 0, dpr = 1;
+      let particles = [];
+      const pointer = { x: -9999, y: -9999, active: false };
+      let boost = 0; // realce temporal tras navegar (decae a 0)
+      const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function resize() {
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        // Cap de DPR a 1.5 para no sobrecargar pantallas HiDPI.
+        dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        w = Math.max(1, Math.floor(rect.width));
+        h = Math.max(1, Math.floor(rect.height));
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function seed() {
+        // Cuenta en función del área, topada para mantener el rendimiento.
+        const target = Math.min(64, Math.max(22, Math.round((w * h) / 26000)));
+        particles = [];
+        for (let i = 0; i < target; i++) {
+          particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            r: 0.6 + Math.random() * 1.8,
+            vx: (Math.random() - 0.5) * 0.18,
+            vy: -0.05 - Math.random() * 0.22, // deriva suave hacia arriba
+            a: 0.25 + Math.random() * 0.5
+          });
+        }
+      }
+
+      function drawParticle(p, glow) {
+        const alpha = Math.min(1, p.a + glow * 0.4);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r + glow * 0.8, 0, Math.PI * 2);
+        // Paleta esmeralda (#10b981 / #4af626) con brillo variable.
+        ctx.fillStyle = 'rgba(52, 211, 153, ' + alpha.toFixed(3) + ')';
+        ctx.shadowColor = 'rgba(16, 185, 129, 0.6)';
+        ctx.shadowBlur = 6 + glow * 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      function step() {
+        ctx.clearRect(0, 0, w, h);
+        if (boost > 0) boost = Math.max(0, boost - 0.012);
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.x += p.vx * (1 + boost * 1.2);
+          p.y += p.vy * (1 + boost * 1.4);
+          // Reacción sutil al puntero: atrae ligeramente las partículas cercanas.
+          if (pointer.active) {
+            const dx = pointer.x - p.x, dy = pointer.y - p.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 24000) {
+              const f = (1 - d2 / 24000) * 0.06;
+              p.x += dx * f; p.y += dy * f;
+            }
+          }
+          // Reaparición por los bordes (toroidal), para densidad constante.
+          if (p.y < -4) { p.y = h + 4; p.x = Math.random() * w; }
+          if (p.x < -4) p.x = w + 4; else if (p.x > w + 4) p.x = -4;
+          drawParticle(p, boost);
+        }
+        if (running) raf = requestAnimationFrame(step);
+      }
+
+      function paintStatic() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < particles.length; i++) drawParticle(particles[i], 0);
+      }
+
+      return {
+        init: function() {
+          canvas = document.getElementById('hub-ambient-canvas');
+          if (!canvas) return;
+          ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          resize();
+          seed();
+          window.addEventListener('resize', () => { resize(); seed(); if (!running) paintStatic(); });
+          // Puntero relativo al canvas (sólo lectura; el canvas no captura eventos).
+          window.addEventListener('pointermove', (e) => {
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            pointer.x = e.clientX - rect.left;
+            pointer.y = e.clientY - rect.top;
+            pointer.active = true;
+          }, { passive: true });
+          window.addEventListener('pointerleave', () => { pointer.active = false; });
+          // Arranca sólo si el hub es la app activa.
+          if (AppManager.currentApp === 'hub') this.start();
+          else paintStatic();
+        },
+        start: function() {
+          if (!canvas || !ctx) return;
+          if (reduced()) { resize(); if (!particles.length) seed(); paintStatic(); running = false; return; }
+          if (running) return;
+          running = true;
+          resize();
+          if (!particles.length) seed();
+          raf = requestAnimationFrame(step);
+        },
+        stop: function() {
+          running = false;
+          if (raf) { cancelAnimationFrame(raf); raf = null; }
+        },
+        // Breve realce al navegar/renderizar (decae solo).
+        intensify: function() {
+          if (reduced()) return;
+          boost = Math.min(1, boost + 0.7);
+        }
+      };
+    })();
+
     // --- DESBLOQUEO GLOBAL DE AUDIO ---
     let globalAudioUnlocked = false;
     const unlockGlobalAudio = () => {
@@ -1578,6 +1909,8 @@
     document.addEventListener('DOMContentLoaded', () => {
       IntroManager.init();
       HubApp.renderEscena('llegada_paramo');
+      // SORPRESA (FEAT-005): inicia el lienzo ambiental del hub (detrás del contenido).
+      HubAmbient.init();
       // SFX de interacción en la navegación estática del hub (Terminales Remotas y pasos de progreso).
       document.querySelectorAll('.hub-scope .btn-enlace, .hub-scope .progress-step').forEach(btn => {
         btn.addEventListener('mouseenter', () => SfxEngine.hover());
