@@ -57,6 +57,23 @@
     .btn-intro:hover {
       background: #10b981; color: #051410; box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
     }
+    /* Pantalla de inicio (botón grande centrado antes de reproducir el video) */
+    #intro-start-screen {
+      position: absolute; inset: 0; z-index: 20; display: flex;
+      flex-direction: column; justify-content: center; align-items: center; gap: 22px;
+      background: radial-gradient(circle at center, rgba(5,20,16,0.55) 0%, rgba(5,20,16,0.9) 100%);
+      transition: opacity 0.5s ease;
+    }
+    #intro-start-screen.hidden { opacity: 0; pointer-events: none; }
+    .btn-intro-start {
+      background: rgba(5, 20, 16, 0.85); color: #f4e7bd; border: 2px solid #10b981;
+      padding: 22px 54px; font-family: 'DM Mono', monospace; font-size: 22px;
+      text-transform: uppercase; letter-spacing: 4px; cursor: pointer;
+      backdrop-filter: blur(8px); border-radius: 6px; transition: all 0.3s ease;
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.45); display: flex; align-items: center; gap: 14px;
+    }
+    .btn-intro-start:hover { background: #10b981; color: #051410; box-shadow: 0 0 50px rgba(16, 185, 129, 0.9); transform: scale(1.04); }
+    .intro-start-hint { color: #9bb5a9; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
 
     /* =========================================
        SISTEMA DE NAVEGACIÓN GLOBAL
@@ -192,12 +209,18 @@
 
   <!-- PANTALLA DE VIDEO INTRODUCTORIO -->
   <div id="intro-video-overlay">
-    <video id="intro-video-player" src="Intro.mp4" playsinline autoplay muted></video>
-    
-    <div class="intro-controls">
-      <button id="btn-unmute-intro" class="btn-intro" onclick="IntroManager.toggleMute()">
-        <i class="ph ph-speaker-slash"></i> Reproducir con Sonido
+    <video id="intro-video-player" src="Intro.mp4" playsinline preload="auto"></video>
+
+    <!-- Pantalla de inicio: el video NO arranca hasta que el usuario pulse Iniciar -->
+    <div id="intro-start-screen">
+      <button id="btn-start-intro" class="btn-intro-start" onclick="IntroManager.startVideo()">
+        <i class="ph ph-play"></i> Iniciar
       </button>
+      <p class="intro-start-hint">Pulsa Iniciar para comenzar la experiencia</p>
+    </div>
+
+    <!-- Controles visibles una vez iniciado el video -->
+    <div class="intro-controls" id="intro-controls" style="display:none;">
       <button class="btn-intro" onclick="IntroManager.enterExperience()">
         Ingresar al Hub <i class="ph ph-arrow-right"></i>
       </button>
@@ -367,52 +390,52 @@
       video: document.getElementById('intro-video-player'),
       hasEntered: false,
 
+      started: false,
+
       init: function() {
         if (!this.video) return;
+
+        // El video NO arranca solo. Espera a que el usuario pulse "Iniciar".
 
         // Si el video termina, entra al Hub
         this.video.addEventListener('ended', () => {
           this.enterExperience();
         });
 
-        // Si el video falla o NO EXISTE el archivo, entra directo al Hub
+        // Si el archivo del video no existe o falla, saltar al Hub (solo tras intentar iniciar)
         this.video.addEventListener('error', () => {
-          console.warn("Video no disponible, entrando al Hub...");
-          this.enterExperience();
-        });
-
-        // En cuanto el video tenga datos, intentar reproducirlo (silenciado para sortear el bloqueo de autoplay).
-        // Si el navegador igual lo bloquea, el usuario lo arranca con el botón "Activar Sonido Video".
-        this.video.addEventListener('loadeddata', () => {
-          this.video.play().catch(() => {
-            console.warn("Autoplay bloqueado: pulsa 'Activar Sonido Video' para iniciarlo.");
-          });
-        });
-
-        // Intento inmediato de reproducción silenciada
-        this.video.play().catch(() => {});
-
-        // Seguro anti-bloqueo SOLO ante fallo real de carga: si tras 12s el video no cargó
-        // NADA de metadatos (archivo ausente/ilegible), saltar al Hub para no quedar en negro.
-        setTimeout(() => {
-          if (!this.hasEntered && this.video.readyState === 0) {
-            console.warn("El video no cargó (archivo ausente); entrando al Hub...");
+          if (this.started) {
+            console.warn("Video no disponible, entrando al Hub...");
             this.enterExperience();
           }
-        }, 12000);
+        });
       },
 
-      toggleMute: function() {
-        const btn = document.getElementById('btn-unmute-intro');
-        // Este botón ahora TAMBIÉN inicia la reproducción: así, si el autoplay fue
-        // bloqueado por el navegador, tu clic arranca el video con sonido.
-        if (this.video.muted) {
-          this.video.muted = false;
-          this.video.play().catch(() => {});
-          btn.innerHTML = '<i class="ph ph-speaker-high"></i> Silenciar Video';
-        } else {
-          this.video.muted = true;
-          btn.innerHTML = '<i class="ph ph-speaker-slash"></i> Activar Sonido Video';
+      // Arranca el video desde el principio y CON SONIDO al pulsar el usuario.
+      startVideo: function() {
+        if (this.started) return;
+        this.started = true;
+
+        const startScreen = document.getElementById('intro-start-screen');
+        const controls = document.getElementById('intro-controls');
+        if (startScreen) startScreen.classList.add('hidden');
+        if (controls) controls.style.display = 'flex';
+
+        // El primer clic desbloquea todo el audio de la experiencia.
+        unlockGlobalAudio();
+
+        // Reproducir desde el inicio con sonido.
+        this.video.currentTime = 0;
+        this.video.muted = false;
+        this.video.volume = 1.0;
+
+        const p = this.video.play();
+        if (p !== undefined) {
+          p.catch(() => {
+            // Si el archivo no cargó o hubo un fallo, no dejamos al usuario atascado.
+            console.warn("No se pudo reproducir el video; entrando al Hub...");
+            this.enterExperience();
+          });
         }
       },
 
