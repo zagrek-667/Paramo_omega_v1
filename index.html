@@ -257,6 +257,95 @@
         padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
         box-sizing: border-box;
       }
+
+      /* ============================================================
+         MÓVIL: TERMINALES EN SCROLL DE PÁGINA ÚNICO (FEAT-001)
+         En escritorio (>=851px) cada terminal usa alturas fijas de viewport
+         con scroll interno/anidado; en portrait corto eso dejaba las opciones
+         de decisión por debajo del pliegue y sin alcance. Aquí convertimos
+         cada terminal en UNA sola columna que fluye con el contenido: el
+         propio .app-container (#refugio/#lyra/#cronos-container, ya con
+         height:100vh + overflow-y:auto) pasa a ser el ÚNICO scroller.
+         Usamos selectores con id/scope para ganar especificidad sobre las
+         utilidades de Tailwind del markup; no se toca ningún id/onclick/JS
+         ni el selector de SFX. Todas estas reglas viven dentro de esta media
+         query, así que el escritorio queda intacto.
+         ============================================================ */
+
+      /* --- REFUGIO ZERO --- */
+      /* El <main class="flex-grow ... flex flex-col"> deja de fijar la altura
+         al viewport y crece con su contenido. */
+      #refugio-container > main {
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 0;
+      }
+      /* El panel interior ya no se estira a altura de viewport. */
+      #refugio-container .panel-borde {
+        flex: none;
+        height: auto;
+        min-height: 0;
+      }
+      /* Caja de narrativa: era un scroll interno de altura fija (Tailwind
+         overflow-y-auto + flex-grow). La expandimos en línea para que el texto
+         forme parte del flujo de la página y #ref-opciones quede debajo,
+         alcanzable por el scroll del contenedor. */
+      #refugio-container .panel-borde > .overflow-y-auto {
+        flex: none;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      /* --- ARCHIVO LYRA --- */
+      /* La escena deja de anclarse al viewport (flex-grow) y se dimensiona por
+         su contenido; el bezel/estética del panel se conserva. */
+      #lyra-scene-container {
+        flex: none;
+        height: auto;
+        min-height: 0;
+      }
+      /* La caja de narrativa CRT se expande en línea en vez de scrollear
+         internamente, de modo que #lyra-decision-matrix / #lyra-choices caen
+         debajo en flujo normal y se alcanzan con el scroll de la página. */
+      #lyra-narrative-text {
+        flex: none;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      /* --- CRONOS-AXIOMA --- */
+      /* La .cronos-scope centra con justify/align:center; un bezel más alto que
+         el viewport quedaría recortado/atrapado. En móvil lo alineamos arriba y
+         a lo ancho para que un bezel alto empiece arriba y el contenedor
+         scrollee como una sola página. */
+      /* Scope por id (#cronos-container) para ganar en especificidad a las
+         reglas base .cronos-scope (misma especificidad pero posteriores en el
+         fuente), de modo que los overrides móviles ganen sin depender del orden. */
+      #cronos-container {
+        justify-content: flex-start;
+        align-items: stretch;
+      }
+      /* El bezel deja de medir 88vh y crece con el contenido (se conservan
+         borde/padding/border-radius definidos en la base y en la media de 480px). */
+      #cronos-container .hardware-bezel {
+        height: auto;
+        min-height: 0;
+      }
+      /* El CRT deja de tener su propio scroll anidado: fluye con el contenido. */
+      #cronos-container .crt-container {
+        height: auto;
+        overflow: visible;
+      }
+      /* La caja de relato deja de scrollear internamente; se expande en línea y
+         #cro-options queda debajo en flujo normal. */
+      #cro-story-text {
+        flex: none;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
     }
     @media (max-width: 480px) {
       .global-controls-container { gap: 8px; }
