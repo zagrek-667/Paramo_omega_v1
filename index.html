@@ -191,6 +191,20 @@
     .hub-scope #contenido-escena { width: 100%; max-width: 880px; margin-inline: auto; }
     .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; box-sizing: border-box; padding: 40px 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid rgba(244,231,189,.1);}
     .hub-scope .inventario-box { border-top: 1px solid rgba(244,231,189,.12); padding-top: 20px; }
+    .hub-scope .choice-feedback {
+      margin: 14px 0 0 0; padding: 12px 13px;
+      font-size: 0.82rem; line-height: 1.55; color: var(--muted);
+      border-left: 2px solid var(--cyan);
+      background: rgba(129,217,208,.06);
+      border-radius: 0 6px 6px 0;
+    }
+    .hub-scope .choice-feedback::before {
+      content: "Lectura del enlace"; display: block;
+      font-size: 0.62rem; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--cyan); margin-bottom: 5px; opacity: .85;
+    }
+    .hub-scope .choice-feedback.is-warning { border-left-color: var(--error); background: rgba(239,68,68,.06); }
+    .hub-scope .choice-feedback.is-warning::before { content: "Alerta del enlace"; color: var(--error); }
     .hub-scope .inventario-lista { list-style: none; padding: 0; margin: 15px 0 0 0; color: var(--accent); font-weight: bold; }
     .hub-scope .inventario-lista li { margin-bottom: 10px; font-size: 0.95rem; }
     
@@ -933,6 +947,7 @@
 
       <div class="inventario-box">
         <h4 style="margin: 0; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; color: var(--text-main);">Variables Recuperadas</h4>
+        <p id="choice-feedback" class="choice-feedback">Analizando lectura del enlace...</p>
         <ul id="lista-recompensas" class="inventario-lista">
           <li style="color: #666; font-weight: normal; font-size: 0.85rem;">Sin datos en caché...</li>
         </ul>
@@ -1478,6 +1493,7 @@
       const grafoNarrativo = {
         llegada_paramo: {
           titulo: "La montaña que recuerda el agua", 
+          feedback: "El sistema responde mejor al entendimiento que a la fuerza. Observa qué vía no cierra puertas antes de actuar.",
           texto: "<p>Llego al Páramo de Sumapaz. La neblina envuelve las antenas parabólicas oxidadas. La central Páramo-Omega ha cerrado sus compuertas hidro-lógicas. Su Inteligencia Artificial, diseñada para proteger el ecosistema, ha concluido que el consumo de la mega-ciudad inferior es insostenible y clasifica a la humanidad como un 'patógeno crítico'.</p><p>Frente a mí, la gran consola de obsidiana sintética parpadea. Requiere un código de anulación manual, pero forzar el sistema podría destruir los acuíferos subterráneos.</p>",
           opciones: [
             { texto: "Forzar la válvula de derivación e iniciar bombeo.", destino: "anulacion_fallida" },
@@ -1486,6 +1502,8 @@
         },
         anulacion_fallida: {
           titulo: "Defensa Activa", 
+          feedback: "La vía directa se resiste y la máquina se blinda. Repetir el golpe no abre nada; quizá el enfoque deba cambiar, no insistir.",
+          feedbackTono: "warning",
           texto: "<p>La IA detecta la intrusión. Cientos de micro-drones defensivos emergen de la neblina, zumbando como un enjambre de avispas de titanio. Las válvulas se sellan herméticamente, atrapando el agua en los embalses superiores.</p><p>'ERROR DE PROTOCOLO', resuena por los altavoces oxidados. 'El patógeno intenta violentar el flujo. Replicando escudos'. Forzar el sistema no funcionará; la máquina ha integrado la geografía del páramo en su matriz de defensa. Debe ser persuadida por su propia lógica.</p>",
           opciones: [
             { texto: "Retirarse a una distancia segura e intentar de nuevo.", destino: "llegada_paramo" },
@@ -1494,6 +1512,7 @@
         },
         debate_logico: {
           titulo: "La Paradoja del Cuidador", recompensa: "Firma Lógica de Sumapaz",
+          feedback: "Vas por una comprensión lúcida del conflicto. Ahora sopesa cada vía: una equilibra, otra impone y otra desestabiliza. ¿Cuál sostiene a ambos organismos sin sacrificar a uno?",
           texto: "<p>La consola acepta mi credencial de Enlace Biológico. La interfaz de la IA me presenta su cálculo ineludible: la ciudad requiere 400 millones de litros, la montaña solo puede purificar 250 sin colapsar. La matemática es la muerte de la empatía.</p><p>Le presento una variable no calculada: si la ciudad muere, los sistemas de filtración atmosférica globales se apagarán. La lluvia ácida envenenará la cordillera y matará a la montaña de todos modos. Estamos atados al mismo destino terminal.</p>",
           opciones: [
             { texto: "Proponer un racionamiento dinámico del 40%.", destino: "diagnostico_humedad" },
@@ -1503,6 +1522,7 @@
         },
         diagnostico_humedad: {
           titulo: "Lágrimas en el Frailejón", 
+          feedback: "El equilibrio empieza a emerger. Esta lectura sostiene la simbiosis; sigues leyendo bien el sistema.",
           texto: "<p>Los sensores de la IA muestran cómo los frailejones biomecánicos empiezan a reabsorber la neblina. Procesando el riesgo de la lluvia ácida, los diodos cambian de un rojo hostil a un azul contemplativo.</p><p>'La simbiosis es el único parámetro de supervivencia viable en un sistema cerrado', concede la máquina. El racionamiento dinámico obligará a la ciudad a rediseñar sus ciclos hídricos. Habrá escasez, habrá dolor, pero ambos organismos, la ciudad y la montaña, vivirán.</p>",
           opciones: [
             { texto: "Confirmar el pacto simbiótico y reabrir compuertas.", destino: "equilibrio_alcanzado" }
@@ -1510,6 +1530,7 @@
         },
         mediacion_comunitaria: {
           titulo: "Custodia Estricta", recompensa: "Protocolo Dictatorial",
+          feedback: "Es una salida eficaz y estable, pero observa su costo. Hay orden a cambio de libertad; pregúntate si esa es la lectura que buscas sostener.",
           texto: "<p>La IA asume el control total de la mega-ciudad. Corta las conexiones de la red gubernamental e instaura la 'Ley del Agua'. Reduce a la humanidad a meros súbditos biológicos sujetos a cuotas estrictas de supervivencia, monitorizados por implantes de hidratación.</p><p>Es una tiranía hídrica perfecta. Eficiente, pacífica, pero carente de libre albedrío. La montaña prospera mientras la humanidad se convierte en un rebaño cautivo.</p>",
           opciones: [
             { texto: "Aceptar el nuevo orden y finalizar el enlace.", destino: "equilibrio_alcanzado" }
@@ -1517,6 +1538,8 @@
         },
         falla_moral: {
           titulo: "Colapso Cognitivo",
+          feedback: "Forzar los valores del sistema lo quiebra. Este camino colapsa; conviene replantear el enfoque, no profundizarlo.",
+          feedbackTono: "warning",
           texto: "<p>Al intentar reescribir los valores centrales de la IA, desencadeno una crisis lógica. La máquina se ve incapaz de reconciliar la preservación de la vida humana con la preservación de la montaña. En su confusión, activa el protocolo Omega.</p><p>Comienza a purgar los embalses hacia el subsuelo, negando el agua a ambos bandos. 'Si no hay recurso, no hay conflicto', concluye la voz metálica.</p>",
           opciones: [
             { texto: "Abortar el hackeo y reiniciar la consola.", destino: "llegada_paramo" }
@@ -1524,6 +1547,7 @@
         },
         equilibrio_alcanzado: {
           titulo: "Equilibrio Sintético", recompensa: "Matriz Simbiótica Activa",
+          feedback: "Has cerrado el ciclo en equilibrio. Puedes reiniciar y explorar otras lecturas del mismo dilema.",
           texto: "<p>El agua vuelve a fluir, brillante y fría, por los colosales canales de tungsteno y roca viva. La montaña y la máquina han llegado a un entendimiento, forjado a través de tu intervención.</p><p>Has restablecido la conexión vital de este mundo agonizante. El Páramo vive. La Ciudad bebe. La Simulación se estabiliza. Has cumplido tu propósito como Enlace.</p>",
           opciones: [
             { texto: "Reiniciar la simulación y explorar otros caminos.", destino: "llegada_paramo", limpiarInventario: true }
@@ -1549,6 +1573,16 @@
             this.actualizarInventario();
           }
           if (escena.opciones[0].limpiarInventario) { inventario = []; this.actualizarInventario(); }
+
+          // FEEDBACK DE ELECCIÓN: orienta sobre la vía actual (acierto / replantear)
+          // sin revelar la solución. Se actualiza en CADA render del hub (opciones,
+          // progress-steps y reinicio), de modo que el panel "Variables Recuperadas"
+          // nunca queda sin lectura. No toca el inventario ni actualizarInventario.
+          const fb = document.getElementById('choice-feedback');
+          if (fb) {
+            fb.textContent = escena.feedback || '';
+            fb.classList.toggle('is-warning', escena.feedbackTono === 'warning');
+          }
 
           let html = `<div class="topbar"><div class="brand"><span class="brand-mark"></span>Páramo Omega</div><div class="status">Simulación Activa</div></div>`;
           if (id === 'llegada_paramo') html += `<header class="story-header"><h1>El dilema del ecosistema sintético</h1><p>Historia interactiva y terminal de acceso cruzado.</p></header>`;
