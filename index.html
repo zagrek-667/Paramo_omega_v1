@@ -389,12 +389,42 @@
       100% { transform: scale(1.04); filter: blur(6px) brightness(1.25); }
     }
 
+    /* =========================================
+       FOLLOW-UP (CASCADA): revelado escalonado tipo SO al entrar a una página.
+       Clase aditiva .cascade sobre un contenedor: sus HIJOS DIRECTOS aparecen uno
+       tras otro con un leve ascenso (translateY + opacidad). Es sutil y corto para
+       no retrasar la lectura: duración por bloque ~.3s, retardo incremental ~66ms,
+       secuencia completa <=~600ms. Se usa en:
+        - #contenido-escena del hub, re-disparado en cada render de escena.
+        - el contenedor entrante de cada app (y el hub al entrar desde la intro),
+          junto al .app-enter existente.
+       ========================================= */
+    .cascade > * {
+      animation: cascade-rise .3s ease-out both;
+      will-change: transform, opacity;
+    }
+    @keyframes cascade-rise {
+      0%   { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    /* Retardo incremental por hijo (~66ms): secuencia corta, nunca arrastra. */
+    .cascade > *:nth-child(1) { animation-delay: 0ms; }
+    .cascade > *:nth-child(2) { animation-delay: 66ms; }
+    .cascade > *:nth-child(3) { animation-delay: 132ms; }
+    .cascade > *:nth-child(4) { animation-delay: 198ms; }
+    .cascade > *:nth-child(5) { animation-delay: 264ms; }
+    .cascade > *:nth-child(6) { animation-delay: 330ms; }
+    .cascade > *:nth-child(7) { animation-delay: 396ms; }
+    .cascade > *:nth-child(n+8) { animation-delay: 462ms; }
+
     /* MOVIMIENTO REDUCIDO: desactiva scale/blur/sweep; conserva solo fundidos de opacidad. */
     @media (prefers-reduced-motion: reduce) {
       #layer-veil { transition: opacity .12s linear; }
       #layer-veil.veil-on::after { animation: none; opacity: 0; }
       .app-container.app-enter { animation: none; }
       #intro-video-overlay.fade-out #intro-video-player { animation: none; }
+      /* Sin cascada: el contenido aparece de golpe, sin desplazamiento ni escalonado. */
+      .cascade > * { animation: none; opacity: 1; transform: none; }
     }
 
     /* =========================================
@@ -756,6 +786,8 @@
           void hub.offsetWidth;
           hub.classList.add('app-enter');
           setTimeout(() => hub.classList.remove('app-enter'), 460);
+          // Cascada tipo SO al abrir el hub desde la intro (mismo lenguaje).
+          AppManager.playCascade(hub);
         }
         setTimeout(() => {
           this.overlay.style.display = 'none';
@@ -920,6 +952,20 @@
         setTimeout(() => veil.classList.remove('veil-on'), 520);
       },
 
+      // CASCADA (follow-up): revelado escalonado tipo SO. Añade la clase .cascade a
+      // un contenedor para que sus hijos directos aparezcan uno tras otro. Es
+      // puramente visual (sólo toca una clase CSS, nunca el markup ni la lógica).
+      // Toggle off -> reflow -> on para que la animación SIEMPRE se reinicie limpio
+      // en cada navegación/render y los retardos no se apilen. La clase se retira
+      // tras ~620ms (fin de la secuencia) para no dejar estado pegado.
+      playCascade: function(el) {
+        if (!el) return;
+        el.classList.remove('cascade');
+        void el.offsetWidth; // reflow: reinicia la animación aunque ya estuviera activa
+        el.classList.add('cascade');
+        setTimeout(() => { el.classList.remove('cascade'); }, 620);
+      },
+
       // FEAT-004: guardia en vuelo para la animación post-decisión. Es independiente
       // de 'transitioning' (que protege el cruce entre apps) para no interferir con la
       // navegación hub<->terminal, pero cumple el mismo contrato: ignora clics nuevos
@@ -999,6 +1045,9 @@
             // Leve scale+blur de entrada (lenguaje futurista compartido).
             incoming.classList.add('app-enter');
             setTimeout(() => incoming.classList.remove('app-enter'), 460);
+            // Cascada tipo SO: los bloques principales del contenedor entrante
+            // aparecen escalonados junto al app-enter (aditivo, sólo visual).
+            this.playCascade(incoming);
           });
 
           document.getElementById('btn-global-back').style.display = (appId === 'hub') ? 'none' : 'flex';
@@ -1148,12 +1197,19 @@
           });
           htmlOpc += `</div>`;
 
-          document.getElementById('contenido-escena').innerHTML = html + htmlOpc;
+          const contenido = document.getElementById('contenido-escena');
+          contenido.innerHTML = html + htmlOpc;
           // SFX de interacción en las opciones recién generadas (sobrevive al rebuild del innerHTML).
           document.querySelectorAll('#contenido-escena .opciones button').forEach(btn => {
             btn.addEventListener('mouseenter', () => SfxEngine.hover());
             btn.addEventListener('click', () => SfxEngine.select());
           });
+          // Cascada tipo SO: los bloques de la escena recién renderizada (.topbar,
+          // story-header, visual-stage, scene-title/copy, decision-heading, opciones)
+          // aparecen escalonados. Se re-dispara en CADA render (parte del proceso de
+          // lectura). Sólo añade/quita la clase .cascade en el contenedor; no altera
+          // el markup ni el selector de SFX ni los onclick de elegirOpcion.
+          AppManager.playCascade(contenido);
           document.querySelectorAll('.hub-scope .progress-step').forEach(paso => paso.classList.toggle('active', paso.dataset.scene === id));
           document.getElementById('multimedia-info').innerHTML = `<button class="sound-control mt-2" onclick="HubApp.escucharEscena()">▶ Leer Escena Actual</button>`;
           
