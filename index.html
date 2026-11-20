@@ -79,19 +79,30 @@
        SISTEMA DE NAVEGACIÓN GLOBAL
        ========================================= */
     body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
-    .app-container { display: none !important; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; overflow-x: hidden; overflow-y: auto; background-color: #000; z-index: 1;}
+    .app-container { display: none !important; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; overflow-x: hidden; overflow-y: auto; background-color: #000; z-index: 1; opacity: 1; transition: opacity 0.26s ease; scroll-behavior: smooth; }
     .app-container.active { z-index: 10; }
+    /* Transición suave entre apps: opacity 0 durante el cruce de fundido. */
+    .app-container.app-fade-out { opacity: 0; }
     .app-container.active.hub-scope { display: grid !important; }
     .app-container.active.refugio-scope { display: flex !important; }
     .app-container.active.lyra-scope { display: flex !important; }
     .app-container.active.cronos-scope { display: flex !important; }
     
     @media (max-width: 850px) {
+      /* En tablet/móvil el hub pasa a columna: la narrativa primero, la barra lateral apilada debajo. */
       .app-container.active.hub-scope { display: flex !important; flex-direction: column; }
-      .hub-scope .sidebar { position: relative; width: 100%; height: auto; min-height: fit-content; padding: 30px 20px; border-top: 1px solid rgba(244,231,189,.12); background: #0a1612; }
-      .hub-scope .narrative-area { width: 100%; min-height: auto; padding: 30px 20px 40px 20px; }
-      .hub-scope .story-header h1 { font-size: 2.8rem; }
+      .hub-scope .sidebar { position: relative; width: 100%; height: auto; min-height: fit-content; padding: 30px clamp(18px, 5vw, 28px); border-top: 1px solid rgba(244,231,189,.12); background: #0a1612; }
+      /* Padding cómodo (no borde a borde) y un colchón inferior grande para que los controles fijos NARRADOR / Volver al Hub (abajo-izquierda) nunca tapen la narración. */
+      .hub-scope .narrative-area { width: 100%; min-height: auto; padding: clamp(22px, 5vw, 30px) clamp(18px, 5vw, 28px) clamp(130px, 22vh, 180px); }
+      .hub-scope #contenido-escena { max-width: 720px; }
+      .hub-scope .story-header { padding: 24px 0 22px; }
+      .hub-scope .story-header h1 { font-size: clamp(2.2rem, 9vw, 2.9rem); }
       .intro-controls { bottom: 20px; right: 20px; left: 20px; justify-content: center; flex-wrap: wrap; }
+    }
+    @media (max-width: 480px) {
+      /* Pantallas estrechas (390px): aún más margen inferior para despejar los controles flotantes y texto sin desbordes horizontales. */
+      .hub-scope .narrative-area { padding-bottom: clamp(150px, 26vh, 200px); }
+      .hub-scope .scene-copy { padding: 20px 18px; }
     }
 
     .global-controls-container {
@@ -117,8 +128,11 @@
       background-color: #102b25; background-image: linear-gradient(90deg, rgba(5,20,16,.93) 0%, rgba(5,20,16,.68) 42%, rgba(5,20,16,.78) 100%), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2200&q=88');
       background-size: cover; background-position: center; background-attachment: fixed; color: var(--text-main);
       display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 270px); overflow-y: auto; isolation: isolate;
+      scroll-behavior: smooth;
     }
-    .hub-scope .narrative-area { width: 100%; min-height: 100vh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) 80px; }
+    /* Columna narrativa: contenido centrado con un ancho de lectura cómodo (~880px) que no se estira de borde a borde en pantallas anchas. */
+    .hub-scope .narrative-area { width: 100%; min-height: 100vh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) clamp(96px, 12vh, 150px); }
+    .hub-scope #contenido-escena { width: 100%; max-width: 880px; margin-inline: auto; }
     .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; box-sizing: border-box; padding: 40px 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid rgba(244,231,189,.1);}
     .hub-scope .inventario-box { border-top: 1px solid rgba(244,231,189,.12); padding-top: 20px; }
     .hub-scope .inventario-lista { list-style: none; padding: 0; margin: 15px 0 0 0; color: var(--accent); font-weight: bold; }
@@ -128,25 +142,27 @@
     .hub-scope .brand { display: flex; align-items: center; gap: 12px; font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 800; }
     .hub-scope .brand-mark { width: 12px; height: 12px; border-radius: 50%; background: #f4a38f; box-shadow: 0 0 18px #f4a38f; }
     .hub-scope .status { color: var(--muted); font: 500 .7rem 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
-    .hub-scope .story-header { max-width: 780px; padding: 40px 0 30px; }
-    .hub-scope .story-header h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: clamp(3rem, 6vw, 5.5rem); line-height: .95; color: #f4e7bd; margin: 0 0 18px; }
-    .hub-scope .story-header p { font-family: 'Newsreader', Georgia, serif; font-size: 1.2rem; color: var(--muted); line-height: 1.7; margin:0; }
+    .hub-scope .story-header { max-width: 100%; padding: clamp(28px, 5vh, 48px) 0 clamp(22px, 3.5vh, 32px); }
+    .hub-scope .story-header h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: clamp(2.6rem, 6vw, 5.5rem); line-height: .97; color: #f4e7bd; margin: 0 0 18px; letter-spacing: -.01em; }
+    .hub-scope .story-header p { font-family: 'Newsreader', Georgia, serif; font-size: clamp(1.05rem, 1.4vw, 1.25rem); color: var(--muted); line-height: 1.7; margin:0; }
     
-    .hub-scope .visual-stage { position: relative; overflow: hidden; background: #07110f; min-height: 320px; border-radius: 22px 4px 22px 4px; border: 2px solid #132c25; margin-bottom: 30px; }
+    .hub-scope .visual-stage { position: relative; overflow: hidden; background: #07110f; min-height: clamp(220px, 32vh, 340px); border-radius: 22px 4px 22px 4px; border: 2px solid #132c25; margin-bottom: clamp(24px, 3.5vh, 34px); }
     .hub-scope .stage-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .65; transition: transform .8s ease; }
     .hub-scope .visual-stage:hover .stage-image { transform: scale(1.03); }
     
     .hub-scope .scene-title { margin: 0 0 18px; color: #f4e7bd; font: 800 clamp(1.8rem, 3.5vw, 2.8rem)/1.1 'Bricolage Grotesque', sans-serif; }
-    .hub-scope .scene-copy { position: relative; max-width: 850px; padding: 30px 34px; background: rgba(7,25,21,.75); border-radius: 4px 20px 4px 20px; backdrop-filter: blur(8px); border: 1px solid rgba(244,231,189,.15); }
+    .hub-scope .scene-copy { position: relative; max-width: 100%; padding: clamp(24px, 3vw, 34px) clamp(22px, 3.2vw, 36px); background: rgba(7,25,21,.75); border-radius: 4px 20px 4px 20px; backdrop-filter: blur(8px); border: 1px solid rgba(244,231,189,.15); }
     .hub-scope .scene-copy::before { content: 'NARRACIÓN'; position: absolute; top: -10px; left: 18px; padding: 2px 8px; background: var(--accent); color: #102019; font: 700 .6rem 'DM Mono', monospace; letter-spacing: .12em; }
     
-    .hub-scope .frame-set p { margin: 0 0 16px 0; color: #f4e7bd; font-size: 1.1rem; line-height: 1.75; font-family: 'Newsreader', Georgia, serif; }
+    .hub-scope .frame-set p { margin: 0 0 16px 0; color: #f4e7bd; font-size: clamp(1.02rem, 1.25vw, 1.15rem); line-height: 1.78; font-family: 'Newsreader', Georgia, serif; }
     .hub-scope .frame-set p:last-child { margin-bottom: 0; }
     
-    .hub-scope .opciones { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; max-width: 760px; }
+    .hub-scope .opciones { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; max-width: 100%; }
     .hub-scope .opciones button { background: rgba(7,25,21,.9); color: #fff; border: 1px solid rgba(244,231,189,.25); padding: 18px 22px 18px 56px; border-radius: 4px 16px 4px 16px; font-size: .95rem; cursor: pointer; text-align: left; transition: all 0.25s ease; position: relative; width:100%; }
     .hub-scope .opciones button > span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 24px; height: 24px; color: #17251f; background: var(--accent); border-radius: 50%; font: 700 .7rem 'DM Mono', monospace; }
-    .hub-scope .opciones button:hover { border-color: #f4a38f; background: #173b31; transform: translateX(6px); }
+    .hub-scope .opciones button:hover { border-color: #f4a38f; background: #173b31; transform: translateX(6px); box-shadow: 0 0 16px rgba(244, 163, 143, 0.18); }
+    .hub-scope .opciones button:active { transform: translateX(3px); }
+    .hub-scope .opciones button:focus-visible { outline: 2px solid #f4a38f; outline-offset: 2px; }
     .hub-scope .decision-heading { display: flex; align-items: center; gap: 10px; margin: 36px 0 12px; color: #f4e7bd; font: 700 .85rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .1em; }
     .hub-scope .decision-heading::before { content: '◆'; color: #f4a38f; }
     
@@ -161,7 +177,9 @@
     
     .hub-scope .enlaces-remotos { border-top: 1px dashed var(--accent); padding-top: 20px; }
     .hub-scope .btn-enlace { display: flex; align-items: center; gap: 10px; width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: #fff; padding: 12px 14px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.75rem; text-transform: uppercase; transition: all 0.2s; }
-    .hub-scope .btn-enlace:hover { background: rgba(16, 185, 129, 0.2); border-color: var(--accent); }
+    .hub-scope .btn-enlace:hover { background: rgba(16, 185, 129, 0.2); border-color: var(--accent); transform: translateX(3px); box-shadow: 0 0 14px rgba(16, 185, 129, 0.18); }
+    .hub-scope .btn-enlace:active { transform: translateX(1px); }
+    .hub-scope .btn-enlace:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .hub-scope .btn-enlace i { font-size: 1.2rem; color: var(--accent); }
 
     /* =========================================
@@ -173,8 +191,10 @@
     }
     .refugio-scope .teko-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
     .refugio-scope .panel-borde { border: 1px solid rgba(212, 163, 115, 0.4); background: rgba(10, 10, 9, 0.95); }
-    .refugio-scope .btn-accion { border: 1px solid rgba(212, 163, 115, 0.5); background: rgba(0,0,0,0.6); color: var(--color-yermo-sand); transition: all 0.2s; text-transform: uppercase; cursor: pointer; }
-    .refugio-scope .btn-accion:hover { background: rgba(212, 163, 115, 0.15); border-color: var(--color-yermo-sand); }
+    .refugio-scope .btn-accion { border: 1px solid rgba(212, 163, 115, 0.5); background: rgba(0,0,0,0.6); color: var(--color-yermo-sand); transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; text-transform: uppercase; cursor: pointer; }
+    .refugio-scope .btn-accion:hover { background: rgba(212, 163, 115, 0.18); border-color: var(--color-yermo-sand); transform: translateY(-1px); box-shadow: 0 0 14px rgba(212, 163, 115, 0.25); }
+    .refugio-scope .btn-accion:active { transform: translateY(0); }
+    .refugio-scope .btn-accion:focus-visible { outline: 2px solid var(--color-yermo-sand); outline-offset: 2px; }
     .refugio-scope .btn-alerta { color: var(--color-yermo-rust); border-color: rgba(188, 71, 73, 0.5); }
     .refugio-scope .progress-segment { flex: 1; height: 100%; border-right: 1px solid #000; }
     .refugio-scope .filled-agua { background-color: #60a5fa; } .refugio-scope .filled-alimento { background-color: #d4a373; } .refugio-scope .filled-moral { background-color: #4ade80; }
@@ -186,8 +206,10 @@
     .lyra-scope { background-color: #020202; color: #4af626; font-family: 'Share Tech Mono', monospace; }
     .lyra-scope .font-crt { font-family: 'VT323', monospace; }
     .lyra-scope .terminal-panel { background: rgba(2, 2, 2, 0.9); border: 1px solid #4af626; }
-    .lyra-scope .btn-cmd { background: transparent; border: 1px solid #1a520d; color: #4af626; cursor: pointer; }
-    .lyra-scope .btn-cmd:hover { background: #4af626; color: #020202; }
+    .lyra-scope .btn-cmd { background: transparent; border: 1px solid #1a520d; color: #4af626; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease; }
+    .lyra-scope .btn-cmd:hover { background: #4af626; color: #020202; transform: translateY(-1px); box-shadow: 0 0 14px rgba(74, 246, 38, 0.35); }
+    .lyra-scope .btn-cmd:active { transform: translateY(0); }
+    .lyra-scope .btn-cmd:focus-visible { outline: 2px solid #4af626; outline-offset: 2px; }
 
     /* =========================================
        4. CRONOS-AXIOMA
@@ -201,8 +223,10 @@
     .cronos-scope[data-theme="red"] { --term-phosphor: #f87171; }
     .cronos-scope .hardware-bezel { width: 95vw; max-width: 1200px; height: 88vh; background: #111; border: 2px solid #2a2d35; border-radius: 16px; padding: 1.5rem; display: flex; }
     .cronos-scope .crt-container { width: 100%; height: 100%; background: #04070a; padding: 2rem; display: flex; flex-direction: column; overflow-y: auto; }
-    .cronos-scope .term-btn { background: rgba(0,0,0,0.5); border: 1px solid var(--term-rust); border-left: 3px solid var(--term-phosphor); color: var(--term-phosphor); padding: 1rem; margin-bottom: 0.75rem; width: 100%; text-align: left; cursor: pointer; }
-    .cronos-scope .term-btn:hover { background: rgba(255,255,255,0.1); }
+    .cronos-scope .term-btn { background: rgba(0,0,0,0.5); border: 1px solid var(--term-rust); border-left: 3px solid var(--term-phosphor); color: var(--term-phosphor); padding: 1rem; margin-bottom: 0.75rem; width: 100%; text-align: left; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease, border-left-width 0.18s ease, box-shadow 0.18s ease; }
+    .cronos-scope .term-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(4px); border-left-width: 5px; box-shadow: 0 0 14px rgba(120, 255, 120, 0.18); }
+    .cronos-scope .term-btn:active { transform: translateX(2px); }
+    .cronos-scope .term-btn:focus-visible { outline: 2px solid var(--term-phosphor); outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -459,6 +483,7 @@
     // sólo tras un gesto del usuario (vía unlockGlobalAudio) para no ser bloqueado por el navegador.
     const SfxEngine = {
       ctx: null,
+      master: null,
       ready: false,
       unlock: function() {
         try {
@@ -467,13 +492,30 @@
             if (!AC) return;
             this.ctx = new AC();
           }
+          // Bus maestro de SFX: se crea UNA sola vez y se conecta al destino.
+          // Nivel moderado para que los efectos queden claramente por encima de la
+          // música de fondo (0.26-0.32) sin saturar.
+          if (!this.master) {
+            this.master = this.ctx.createGain();
+            this.master.gain.value = 0.55;
+            this.master.connect(this.ctx.destination);
+          }
           if (this.ctx.state === 'suspended') this.ctx.resume();
           this.ready = true;
         } catch (e) { /* WebAudio no disponible: SFX silenciosos */ }
       },
+      // Red de seguridad: crea ctx+master si faltan y reanuda si quedó suspendido.
+      // El contexto normalmente ya está 'running' tras el gesto de Iniciar; esto es
+      // robustez barata por si el navegador lo autosuspende.
+      _ensure: function() {
+        if (!this.ctx || !this.master) this.unlock();
+        try {
+          if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+        } catch (e) { /* ignorar */ }
+      },
       // Pequeño tono con envolvente de ganancia para evitar clics.
       _blip: function(freq, duration, gain, type) {
-        if (!this.ready || !this.ctx) return;
+        if (!this.ready || !this.ctx || !this.master) return;
         try {
           const now = this.ctx.currentTime;
           const osc = this.ctx.createOscillator();
@@ -484,29 +526,33 @@
           g.gain.exponentialRampToValueAtTime(gain, now + 0.008);
           g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
           osc.connect(g);
-          g.connect(this.ctx.destination);
+          g.connect(this.master);
           osc.start(now);
           osc.stop(now + duration + 0.02);
         } catch (e) { /* ignorar fallos puntuales de SFX */ }
       },
-      // Tecleo: muy corto, ganancia baja, con ligera variación de tono.
+      // Tecleo: muy corto, con ligera variación de tono. Más suave que hover/select
+      // para no fatigar durante el tecleo rápido, pero claramente audible.
       // timbre: 'sine' (Lyra, limpio/agudo), 'square' (Refugio, terminal), 'sawtooth' (Cronos, mecánico).
       typing: function(timbre) {
+        this._ensure();
         let base = 760;
         if (timbre === 'square') base = 540;       // Refugio
         else if (timbre === 'sawtooth') base = 320; // Cronos (más grave/pesado)
         else if (timbre === 'sine') base = 920;     // Lyra (alto/limpio)
         const freq = base + (Math.random() * 60 - 30);
-        this._blip(freq, 0.035, 0.035, timbre || 'sine');
+        this._blip(freq, 0.038, 0.16, timbre || 'sine');
       },
       // Sonido sutil al pasar el puntero sobre una opción.
       hover: function() {
-        this._blip(660, 0.06, 0.03, 'sine');
+        this._ensure();
+        this._blip(660, 0.06, 0.20, 'sine');
       },
-      // Sonido al elegir una opción.
+      // Sonido al elegir una opción: confirmación de dos tonos para que se distinga del hover.
       select: function() {
-        this._blip(520, 0.07, 0.05, 'triangle');
-        this._blip(780, 0.09, 0.04, 'triangle');
+        this._ensure();
+        this._blip(520, 0.07, 0.26, 'triangle');
+        this._blip(780, 0.09, 0.22, 'triangle');
       }
     };
 
@@ -573,24 +619,65 @@
     const AppManager = {
       currentApp: 'hub',
       apps: ['hub', 'refugio', 'lyra', 'cronos'],
-      
+      transitioning: false,
+
       launchApp: function(appId) {
+        // Guardia de reentrada: ignorar clics nuevos mientras un fundido está en curso
+        // (evita doble boot/forceAudio del mismo micrositio por clics <260ms).
+        if (this.transitioning) return;
+        // Si ya estamos en la app pedida, no hay transición que hacer.
+        if (appId === this.currentApp) return;
+
+        // Capturar el contenedor saliente y FIJAR currentApp de forma SÍNCRONA,
+        // antes del setTimeout, para que cualquier lectura posterior sea coherente.
+        const outgoing = document.getElementById(this.currentApp + '-container');
+        const incoming = document.getElementById(appId + '-container');
+        this.currentApp = appId;
+
+        // Pausar audio saliente y detener la voz ANTES de la transición.
         VoiceEngine.stop();
         HubApp.pauseAmbient();
         RefugioApp.pauseAudio();
         LyraApp.shutdownAudio();
         CronosApp.shutdownAudio();
 
-        this.apps.forEach(app => document.getElementById(app + '-container').classList.remove('active'));
-        document.getElementById(appId + '-container').classList.add('active');
-        this.currentApp = appId;
-        
-        document.getElementById('btn-global-back').style.display = (appId === 'hub') ? 'none' : 'flex';
+        const activate = () => {
+          this.apps.forEach(app => {
+            const c = document.getElementById(app + '-container');
+            c.classList.remove('active', 'app-fade-out');
+          });
+          // Mostrar el nuevo contenedor arrancando invisible, luego desvanecer hacia 1.
+          incoming.classList.add('active', 'app-fade-out');
+          incoming.scrollTop = 0;
+          // Forzar reflow para que la transición de opacidad se dispare.
+          void incoming.offsetWidth;
+          requestAnimationFrame(() => incoming.classList.remove('app-fade-out'));
 
-        if(appId === 'hub') HubApp.forceStartAmbient();
-        if(appId === 'refugio') { RefugioApp.init(); RefugioApp.forceAudio(); }
-        if(appId === 'lyra') { LyraApp.bootSystem(); LyraApp.forceAudio(); }
-        if(appId === 'cronos') { CronosApp.boot(); CronosApp.forceAudio(); }
+          document.getElementById('btn-global-back').style.display = (appId === 'hub') ? 'none' : 'flex';
+
+          // Envolver el despacho por app en try/finally para que la guardia se
+          // libere SIEMPRE, incluso si init/boot/forceAudio lanza una excepción
+          // (de lo contrario 'transitioning' quedaría atascado en true y
+          // bloquearía permanentemente toda la navegación entre micrositios).
+          try {
+            if(appId === 'hub') HubApp.forceStartAmbient();
+            if(appId === 'refugio') { RefugioApp.init(); RefugioApp.forceAudio(); }
+            if(appId === 'lyra') { LyraApp.bootSystem(); LyraApp.forceAudio(); }
+            if(appId === 'cronos') { CronosApp.boot(); CronosApp.forceAudio(); }
+          } finally {
+            // Liberar la guardia SIEMPRE al final de activate(), así nunca se atasca.
+            this.transitioning = false;
+          }
+        };
+
+        // Desvanecer el contenedor saliente y, al terminar, activar el nuevo.
+        if (outgoing && outgoing !== incoming && outgoing.classList.contains('active')) {
+          this.transitioning = true;
+          outgoing.classList.add('app-fade-out');
+          setTimeout(activate, 260);
+        } else {
+          activate();
+        }
       },
       returnToHub: function() { this.launchApp('hub'); }
     };
