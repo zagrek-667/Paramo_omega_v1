@@ -186,6 +186,50 @@
     }
 
     /* =========================================
+       CRÉDITOS DE APERTURA (FEAT-001): títulos de estilo cinematográfico que
+       se funden de forma MUY sutil, uno a uno, sobre el velo oscuro de la
+       pantalla de inicio ANTES de que el usuario pulse Iniciar. Son ambientales,
+       no bloqueantes y saltables: la capa es pointer-events:none y se ancla a la
+       zona superior/central, sin solapar el botón centrado; pulsar Iniciar los
+       limpia (stopOpeningCredits) y sigue el flujo normal. Nunca arrancan el
+       video ni entran al hub.
+       ========================================= */
+    #intro-credits {
+      position: absolute; left: 50%; top: 24%;
+      transform: translateX(-50%);
+      width: min(86vw, 640px); max-width: 86vw;
+      /* Por debajo del botón/ayuda en flujo flex, y SIN capturar toques nunca. */
+      z-index: 5; pointer-events: none;
+      text-align: center;
+    }
+    .intro-credit-card {
+      position: absolute; left: 0; right: 0; top: 0; margin: 0;
+      opacity: 0; transition: opacity 1.2s var(--ease);
+      color: var(--sand);
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(12px, 3.4vw, 17px);
+      letter-spacing: .28em; text-transform: uppercase;
+      line-height: 1.5;
+      text-shadow: 0 2px 14px rgba(0,0,0,0.75), 0 0 2px rgba(0,0,0,0.6);
+    }
+    .intro-credit-card.is-visible { opacity: 1; }
+    /* Tarjeta de título destacada: cara display, más grande y espaciada. */
+    .intro-credit-card.intro-credit-title {
+      font-family: 'DM Serif Display', serif;
+      text-transform: none; letter-spacing: .18em;
+      color: var(--text-soft);
+      font-size: clamp(26px, 8.5vw, 54px);
+    }
+
+    /* MOVIMIENTO REDUCIDO: sin fundidos lentos. Ocultamos por completo la capa
+       de créditos para que el usuario vea de inmediato la pantalla de inicio
+       normal (botón + ayuda). Nunca atrapa al usuario. */
+    @media (prefers-reduced-motion: reduce) {
+      .intro-credit-card { transition: none; }
+      #intro-credits { display: none; }
+    }
+
+    /* =========================================
        SISTEMA DE NAVEGACIÓN GLOBAL
        ========================================= */
     /* En móvil 100vh = viewport GRANDE (incluye la barra del navegador): el
@@ -1594,6 +1638,16 @@
 
     <!-- Pantalla de inicio: el video NO arranca hasta que el usuario pulse Iniciar -->
     <div id="intro-start-screen">
+      <!-- Créditos de apertura (FEAT-001): ambientales, no bloqueantes y saltables.
+           Van ANTES del botón para que éste siga siendo el foco centrado; la capa
+           es pointer-events:none, así que nunca intercepta clics en Iniciar.
+           aria-hidden para no molestar a lectores de pantalla con los títulos. -->
+      <div id="intro-credits" aria-hidden="true">
+        <p class="intro-credit-card intro-credit-title">P&Aacute;RAMO OMEGA</p>
+        <p class="intro-credit-card">una experiencia interactiva</p>
+        <p class="intro-credit-card">Historia &middot; Andronak Zagreirus</p>
+        <p class="intro-credit-card">2026</p>
+      </div>
       <button id="btn-start-intro" class="btn-intro-start" onclick="IntroManager.startVideo()">
         <i class="ph ph-play" id="btn-start-intro-icon"></i> <span id="btn-start-intro-label">Iniciar</span>
       </button>
@@ -1841,6 +1895,55 @@
             this.enterExperience();
           }
         });
+
+        // CRÉDITOS DE APERTURA (FEAT-001): secuencia sutil de títulos sobre el velo
+        // de inicio. Ambiental y saltable; no toca la señalización de disponibilidad
+        // ni arranca el video. Se lanza al final de init(), ya con markPreparing hecho.
+        this.startOpeningCredits();
+      },
+
+      // --- Créditos de apertura (ambientales, no bloqueantes) ---
+      creditTimeouts: [],
+
+      // Lanza la secuencia de títulos. Cada tarjeta se funde, se mantiene y se
+      // funde de salida antes de la siguiente; al terminar se asienta en la
+      // pantalla de inicio normal. NO arranca el video ni entra al hub.
+      startOpeningCredits: function() {
+        // MOVIMIENTO REDUCIDO: no animamos nada (la capa además queda oculta por
+        // CSS). El usuario ve de inmediato el botón Iniciar, sin ataduras.
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (this.started) return; // si ya pulsó Iniciar, no hay créditos
+        const layer = document.getElementById('intro-credits');
+        if (!layer) return;
+        const cards = Array.prototype.slice.call(layer.querySelectorAll('.intro-credit-card'));
+        if (!cards.length) return;
+
+        // Tiempos (ms): retardo inicial, fundido in/out (ligado a la transición CSS
+        // de 1.2s) y permanencia visible de cada tarjeta. ~3.3s por tarjeta.
+        const start = 900;    // respiro antes del primer título
+        const fade = 1200;    // coincide con transition opacity 1.2s
+        const hold = 2100;    // permanencia con la tarjeta visible
+        let t = start;
+        const self = this;
+        cards.forEach(function(card) {
+          self.creditTimeouts.push(setTimeout(function() { card.classList.add('is-visible'); }, t));
+          self.creditTimeouts.push(setTimeout(function() { card.classList.remove('is-visible'); }, t + fade + hold));
+          t += fade + hold + fade; // entrada + permanencia + salida antes de la siguiente
+        });
+      },
+
+      // Limpia la secuencia: cancela todos los temporizadores y oculta las tarjetas.
+      // Idempotente: seguro de llamar aunque no haya nada en curso.
+      stopOpeningCredits: function() {
+        if (this.creditTimeouts && this.creditTimeouts.length) {
+          this.creditTimeouts.forEach(function(id) { clearTimeout(id); });
+        }
+        this.creditTimeouts = [];
+        const layer = document.getElementById('intro-credits');
+        if (layer) {
+          Array.prototype.forEach.call(layer.querySelectorAll('.intro-credit-card.is-visible'),
+            function(card) { card.classList.remove('is-visible'); });
+        }
       },
 
       isReady: false,
@@ -1879,6 +1982,11 @@
       startVideo: function() {
         if (this.started) return;
         this.started = true;
+
+        // Pulsar Iniciar salta/limpia de inmediato los créditos de apertura antes
+        // de continuar con el flujo normal de carga (no afecta a la señalización
+        // de disponibilidad ni al lead-in audio del hub).
+        this.stopOpeningCredits();
 
         const startScreen = document.getElementById('intro-start-screen');
         const controls = document.getElementById('intro-controls');
