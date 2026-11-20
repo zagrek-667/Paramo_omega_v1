@@ -262,6 +262,21 @@
         padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
         box-sizing: border-box;
       }
+      /* La barra de controles es fija (position:fixed) y NO ocupa flujo, por lo que
+         el padding-bottom del contenedor scroller no basta para empujar la última
+         opción por encima de ella al final del scroll. scroll-padding-bottom reserva
+         ese espacio para scrollIntoView y el scroll natural, de modo que ninguna
+         decisión quede jamás detrás de la barra. Aplica a TODAS las vistas (hub+terminales). */
+      .app-container {
+        scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+      }
+      /* Además, reservamos el colchón también en el contenido interno de las
+         terminales (no sólo el contenedor) para que el final del scroll deje la
+         última opción por encima de la barra fija. */
+      #refugio-container > main, #lyra-container > main, #lyra-scene-container,
+      #cronos-container .hardware-bezel {
+        margin-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      }
 
       /* ============================================================
          MÓVIL: TERMINALES EN SCROLL DE PÁGINA ÚNICO (FEAT-001)
