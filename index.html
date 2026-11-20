@@ -207,7 +207,92 @@
          subimos el hint de orientación por encima de ella para que no se solapen
          (la franja ocupa ~61px + safe-area). Se usa #hub-hint para ganar especificidad
          sobre la regla base .hub-hint que aparece más adelante en el documento. */
-      #hub-hint.hub-hint { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); max-width: 92vw; }
+      /* En móvil la consola sigue CENTRADA en medio de la lectura; solo ajustamos
+         el ancho para pantallas estrechas. Se mantiene fixed + translate(-50%,-50%)
+         de la regla base (no se fuerza bottom). */
+      #hub-hint.hub-hint { width: min(440px, 92vw); max-width: 92vw; font-size: 12.5px; }
+
+      /* ============================================================
+         CAJÓN LATERAL MÓVIL (default CERRADO)
+         En móvil la .sidebar dejaba de ocupar flujo APILADO debajo de la narrativa,
+         empujando las .opciones de decisión fuera de la primera lectura. Aquí la
+         convertimos en un cajón off-canvas CERRADO por defecto: fuera del flujo
+         (position:fixed) y deslizado a la derecha, de modo que la narrativa + sus
+         .opciones son el contenido primario e inmediato al entrar al hub. El cajón
+         se abre bajo demanda con el botón #hub-drawer-toggle y se repliega con el
+         aspa, el velo táctil o al tocar una opción de ruta/terminal.
+         Se usa #hub-container .sidebar (especificidad 1,1,0) para ganar sin ambigüedad
+         a la regla base .hub-scope .sidebar y a la regla móvil previa (lección: un fix
+         anterior tuvo que re-scopearse de .cronos-scope a #cronos-container).
+         ============================================================ */
+      #hub-container .sidebar {
+        position: fixed; top: 0; right: 0; bottom: 0; left: auto;
+        width: min(86vw, 320px); height: 100vh; height: 100dvh;
+        z-index: 100000; /* por encima de la narrativa; por debajo de la franja de controles (999999) */
+        padding: calc(54px + env(safe-area-inset-top, 0px)) 22px calc(84px + env(safe-area-inset-bottom, 0px));
+        background: #0a1612;
+        border-top: 0; border-left: 1px solid rgba(244, 231, 189, 0.14);
+        box-shadow: -14px 0 40px rgba(0, 0, 0, 0.5);
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
+        transform: translateX(104%); /* CERRADO: fuera de pantalla a la derecha */
+        pointer-events: none; /* no captura toques mientras está cerrado */
+        transition: transform .32s cubic-bezier(.22,.61,.36,1);
+      }
+      /* ABIERTO: la clase .drawer-open se alterna en #hub-container (ver JS). */
+      #hub-container.drawer-open .sidebar {
+        transform: translateX(0);
+        pointer-events: auto;
+      }
+
+      /* Botón disparador: franja superior derecha, fuera del hint centrado y de la
+         barra de controles inferior. Estilo consola para encajar con el hub. */
+      #hub-container .hub-drawer-toggle {
+        display: inline-flex; align-items: center; gap: 6px;
+        position: fixed; z-index: 100001;
+        top: calc(12px + env(safe-area-inset-top, 0px));
+        right: clamp(12px, 4vw, 18px);
+        min-height: 40px; padding: 9px 14px;
+        background: rgba(6, 12, 10, 0.92); color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 6px;
+        font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer;
+        backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      }
+      #hub-container .hub-drawer-toggle:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+      /* Al abrir el cajón ocultamos el disparador para no duplicar controles. */
+      #hub-container.drawer-open .hub-drawer-toggle { display: none; }
+
+      /* Aspa de cierre dentro del cajón. */
+      #hub-container .hub-drawer-close {
+        display: grid; place-items: center;
+        position: absolute; z-index: 1;
+        top: calc(12px + env(safe-area-inset-top, 0px)); right: 14px;
+        width: 34px; height: 34px; padding: 0;
+        background: rgba(6, 12, 10, 0.6); color: #9bb5a9;
+        border: 1px solid rgba(244, 231, 189, 0.18); border-radius: 6px;
+        font: 700 20px/1 'DM Mono', monospace; cursor: pointer;
+      }
+      #hub-container .hub-drawer-close:hover { color: #10b981; border-color: #10b981; }
+      #hub-container .hub-drawer-close:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+
+      /* Velo táctil: cubre la pantalla cuando el cajón está abierto; tocarlo cierra. */
+      #hub-container .hub-drawer-scrim {
+        display: block; position: fixed; inset: 0; z-index: 99999;
+        background: rgba(3, 9, 7, 0.55); backdrop-filter: blur(1px);
+        opacity: 0; pointer-events: none; transition: opacity .3s ease;
+      }
+      #hub-container.drawer-open .hub-drawer-scrim { opacity: 1; pointer-events: auto; }
+
+      /* La narrativa recupera el ancho completo (el cajón ya no ocupa columna) y deja
+         sitio arriba para no quedar bajo el botón disparador fijo. Elevamos la
+         especificidad a #hub-container .narrative-area (1,1,0) para asegurar que
+         min-height:auto gane sin depender del orden. Se conserva el colchón inferior
+         (safe-area + alto de la barra fija) para que las .opciones queden siempre
+         por encima de la franja de controles. */
+      #hub-container .narrative-area {
+        min-height: auto;
+        padding: calc(58px + env(safe-area-inset-top, 0px)) clamp(18px, 5vw, 28px) calc(72px + env(safe-area-inset-bottom, 0px));
+      }
     }
     /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
        El video es 16:9 (horizontal). En vertical, 'contain' lo encogía a una banda
@@ -490,25 +575,56 @@
        Toast discreto, anclado abajo-centro del hub. No bloquea clics (pointer-events
        none salvo el aspa de cierre). Aparece/desaparece con un fundido suave.
        ========================================= */
+    /* CONSOLA AÑEJA: el aviso de una sola vez se presenta como una terminal de
+       código antigua, CENTRADA en medio del área de lectura (fixed + translate -50%).
+       Panel oscuro, texto fósforo (verde/ámbar), prompt '>' y cursor parpadeante,
+       sutil scanline. No bloquea clics: pointer-events:none en el panel; solo el aspa
+       recibe toques. Se autodescarta por timeout. */
     .hub-hint {
-      position: fixed; z-index: 1000; left: 50%; bottom: 26px; transform: translate(-50%, 12px);
-      max-width: min(460px, 86vw); box-sizing: border-box;
-      padding: 13px 40px 13px 16px;
-      background: rgba(5, 20, 16, 0.92); color: #f4e7bd;
-      border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 8px;
-      backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      font-family: 'DM Mono', monospace; font-size: 12.5px; line-height: 1.55; letter-spacing: .02em;
+      position: fixed; z-index: 1000; left: 50%; top: 50%;
+      transform: translate(-50%, calc(-50% + 10px));
+      width: min(520px, 90vw); max-width: 90vw; box-sizing: border-box;
+      padding: 18px 44px 18px 18px;
+      background: #04110c; color: #26d07c;
+      border: 1px solid rgba(16, 185, 129, 0.55); border-radius: 6px;
+      box-shadow: 0 0 0 1px rgba(16,185,129,0.08) inset, 0 14px 40px rgba(0,0,0,0.6), 0 0 26px rgba(16,185,129,0.14);
+      font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1.6; letter-spacing: .02em;
+      text-shadow: 0 0 6px rgba(38, 208, 124, 0.45);
+      overflow: hidden;
       opacity: 0; pointer-events: none; transition: opacity .5s ease, transform .5s ease;
     }
-    .hub-hint.is-visible { opacity: 1; transform: translate(-50%, 0); }
-    .hub-hint .hub-hint-close {
-      position: absolute; top: 6px; right: 8px; width: 22px; height: 22px;
-      display: grid; place-items: center; padding: 0;
-      background: transparent; border: 0; color: #9bb5a9; cursor: pointer;
-      font: 700 15px/1 'DM Mono', monospace; pointer-events: auto; border-radius: 4px;
+    /* Scanline sutil tipo CRT por encima del texto (decorativo, sin capturar clics). */
+    .hub-hint::before {
+      content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(0,0,0,0.16) 3px, rgba(0,0,0,0) 4px);
+      opacity: .35; animation: hubHintScan 6s linear infinite;
     }
-    .hub-hint .hub-hint-close:hover { color: #10b981; }
+    .hub-hint.is-visible { opacity: 1; transform: translate(-50%, -50%); }
+    .hub-hint .hub-hint-prompt { color: #10b981; margin-right: 6px; }
+    .hub-hint .hub-hint-cursor {
+      display: inline-block; width: 8px; margin-left: 2px; color: #26d07c;
+      animation: hubHintBlink 1s steps(1) infinite;
+    }
+    @keyframes hubHintBlink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+    @keyframes hubHintScan { from { background-position: 0 0; } to { background-position: 0 100px; } }
+    .hub-hint .hub-hint-close {
+      position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; z-index: 3;
+      display: grid; place-items: center; padding: 0;
+      background: transparent; border: 0; color: #10b981; cursor: pointer;
+      font: 700 16px/1 'DM Mono', monospace; pointer-events: auto; border-radius: 4px;
+    }
+    .hub-hint .hub-hint-close:hover { color: #7cf0b4; }
     .hub-hint .hub-hint-close:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+
+    /* =========================================
+       CAJÓN LATERAL MÓVIL (toggle + velo + cierre)
+       Estos controles NO existen en escritorio: por defecto display:none y solo se
+       muestran dentro de @media (max-width:850px). Así el layout de escritorio
+       (grid 2 columnas) queda intacto byte a byte. Las reglas de posición/estado
+       del cajón viven todas dentro de la media query móvil más abajo.
+       ========================================= */
+    .hub-drawer-toggle, .hub-drawer-close { display: none; }
+    .hub-drawer-scrim { display: none; }
 
     /* =========================================
        FEAT-006 (gap 3): CADENCIA DE CIERRE (sólo equilibrio_alcanzado)
@@ -721,9 +837,15 @@
          desenfoque ni escalonado. */
       .cascade > * { animation: none; opacity: 1; transform: none; filter: none; }
       /* FEAT-006: el aviso y la cadencia de cierre aparecen sin desplazamiento ni
-         animación; sólo el estado final sereno (viñeta estática, toast sin deslizar). */
-      .hub-hint { transition: opacity .12s linear; transform: translate(-50%, 0); }
-      .hub-hint.is-visible { transform: translate(-50%, 0); }
+         animación. La consola añeja se muestra como texto estático centrado: sin
+         desplazamiento de entrada, sin cursor parpadeante, sin movimiento de scanline. */
+      .hub-hint { transition: opacity .12s linear; transform: translate(-50%, -50%); }
+      .hub-hint.is-visible { transform: translate(-50%, -50%); }
+      .hub-hint::before { animation: none; }
+      .hub-hint .hub-hint-cursor { animation: none; opacity: 1; }
+      /* El cajón lateral móvil se repliega/despliega sin deslizamiento animado. */
+      #hub-container .sidebar { transition: none; }
+      #hub-container .hub-drawer-scrim { transition: none; }
       #hub-container.ending-ambience::after { animation: none; opacity: 1; }
     }
 
@@ -1201,11 +1323,26 @@
     <!-- FEAT-006 (gap 2): aviso de orientación mostrado una sola vez al entrar al hub.
          No bloquea clics (pointer-events:none salvo el aspa); se autodescarta por timeout. -->
     <div id="hub-hint" class="hub-hint" role="status" aria-live="polite"></div>
+    <!-- MÓVIL: disparador del cajón lateral. Oculto en escritorio (display:none fuera
+         de la media query de 850px); solo aparece en móvil, anclado arriba a la
+         derecha, por fuera de la franja fija de controles inferiores y del hint
+         centrado. Abre/cierra la .sidebar como cajón deslizable. aria-controls apunta
+         al id del cajón (#hub-sidebar). -->
+    <button type="button" id="hub-drawer-toggle" class="hub-drawer-toggle"
+            aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="hub-sidebar">
+      <i class="ph ph-list" aria-hidden="true"></i> Menú
+    </button>
+    <!-- MÓVIL: velo táctil que cierra el cajón al tocar fuera. Oculto en escritorio. -->
+    <div id="hub-drawer-scrim" class="hub-drawer-scrim" hidden></div>
     <div class="narrative-area" id="narrative-area">
       <div id="contenido-escena"></div>
     </div>
 
-    <div class="sidebar">
+    <div class="sidebar" id="hub-sidebar">
+      <!-- MÓVIL: cierre del cajón. Oculto en escritorio (display:none fuera de la
+           media query); dentro del cajón deslizable sirve para replegarlo y volver
+           a la lectura/opciones. -->
+      <button type="button" id="hub-drawer-close" class="hub-drawer-close" aria-label="Cerrar menú de navegación">&times;</button>
       <div>
         <p class="side-kicker">Ruta de la simulación</p>
         <nav class="progress-nav">
@@ -1541,12 +1678,18 @@
         this.hintShown = true;
         const hint = document.getElementById('hub-hint');
         if (!hint) return;
-        hint.innerHTML = 'Activa la Atmósfera Sonora y el Narrador en el panel. Tus decisiones cambian el desenlace.'
+        // Mensaje estilo arranque de consola añeja: prompt '>', texto fósforo y
+        // cursor parpadeante (el parpadeo/scanline se desactivan bajo reduced-motion
+        // vía CSS). El aspa es el único elemento que captura toques.
+        hint.innerHTML =
+          '<span class="hub-hint-prompt">&gt;</span>'
+          + 'SISTEMA P\u00c1RAMO-OMEGA :: activa atm\u00f3sfera y narrador \u00b7 tus decisiones alteran el desenlace_'
+          + '<span class="hub-hint-cursor" aria-hidden="true">\u2588</span>'
           + '<button type="button" class="hub-hint-close" aria-label="Cerrar aviso">\u00d7</button>';
         const dismiss = () => hint.classList.remove('is-visible');
         const closeBtn = hint.querySelector('.hub-hint-close');
         if (closeBtn) closeBtn.addEventListener('click', dismiss);
-        // Fundido de entrada tras un instante y autodescarte a los ~6s.
+        // Fundido de entrada tras un instante y autodescarte a los ~6.5s.
         setTimeout(() => hint.classList.add('is-visible'), 450);
         setTimeout(dismiss, 6500);
       }
@@ -2584,6 +2727,38 @@
         btn.addEventListener('mouseenter', () => SfxEngine.hover());
         btn.addEventListener('click', () => SfxEngine.select());
       });
+
+      // CAJÓN LATERAL MÓVIL: lógica aditiva de abrir/cerrar. Solo tiene efecto en
+      // móvil (los controles están display:none en escritorio vía CSS), por lo que
+      // es inofensiva en escritorio. Alterna la clase .drawer-open en #hub-container
+      // (de donde dependen las reglas CSS del cajón, el velo y el disparador) y
+      // mantiene aria-expanded sincronizado. No toca ningún id/onclick existente.
+      (function initHubDrawer() {
+        const hub = document.getElementById('hub-container');
+        const toggle = document.getElementById('hub-drawer-toggle');
+        const closeBtn = document.getElementById('hub-drawer-close');
+        const scrim = document.getElementById('hub-drawer-scrim');
+        if (!hub || !toggle) return;
+        const setOpen = (open) => {
+          hub.classList.toggle('drawer-open', open);
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (scrim) scrim.hidden = !open;
+          try { SfxEngine.select(); } catch (e) {}
+        };
+        toggle.addEventListener('click', () => setOpen(!hub.classList.contains('drawer-open')));
+        if (closeBtn) closeBtn.addEventListener('click', () => setOpen(false));
+        if (scrim) scrim.addEventListener('click', () => setOpen(false));
+        // Al tocar un paso de ruta o una terminal, repliega el cajón para volver a la
+        // lectura/terminal. launchApp oculta el hub de todas formas; esto solo deja el
+        // cajón cerrado al regresar. No interfiere con los onclick inline existentes.
+        hub.querySelectorAll('.progress-step, .btn-enlace').forEach(b => {
+          b.addEventListener('click', () => setOpen(false));
+        });
+        // Esc cierra el cajón (accesibilidad de teclado).
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && hub.classList.contains('drawer-open')) setOpen(false);
+        });
+      })();
     });
 
     document.addEventListener('click', unlockGlobalAudio, { once: true });
