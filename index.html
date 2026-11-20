@@ -667,6 +667,179 @@
     }
     .hub-scope .narrative-area,
     .hub-scope .sidebar { position: relative; z-index: 1; }
+
+    /* =========================================
+       TÍTULOS FRAGMENTADOS POR TERMINAL (FEAT-006)
+       Efecto "fragmentado" (glitch/datamosh/señal rota) ANIMADO, aditivo y por
+       encima del .micro-title (parpadeo idle) y las entradas .mt-enter-*. El texto
+       base permanece sólido y legible: la fragmentación es una ráfaga BREVE y
+       periódica (mayormente calma, un glitch cada pocos segundos). Cada terminal
+       usa un tratamiento distinto y acorde a su estética.
+       IMPORTANTE: los tres títulos por-escena (#ref-titulo-escenario,
+       #lyra-scene-title, #cro-node-title) reciben su texto por JS (innerText) sin
+       data-text, por lo que NO se usa attr(data-text) en ::before/::after: todo el
+       efecto se hace sobre el PROPIO elemento (clip-path/transform/text-shadow),
+       así nunca aparece texto fantasma vacío o desfasado.
+       ========================================= */
+
+    /* (a) REFUGIO ZERO: "señal analógica desgastada" -> rebanadas horizontales
+       que saltan con tinte arena/óxido. Calma ~6s, ráfaga breve de desgarro. */
+    .refugio-scope .micro-title {
+      animation:
+        micro-flicker 5.5s ease-in-out infinite,
+        frag-refugio 6s steps(1, end) infinite;
+    }
+    @keyframes frag-refugio {
+      0%, 70%, 100% {
+        clip-path: none; transform: translateX(0);
+        text-shadow:
+          0 0 .4px color-mix(in srgb, var(--mt-accent) 70%, transparent),
+          -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 28%, transparent),
+           1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 24%, transparent),
+          0 0 10px color-mix(in srgb, var(--mt-accent) 24%, transparent);
+      }
+      /* ráfaga de desgarro horizontal (72%..82%) con tinte arena/óxido */
+      72%  { clip-path: inset(10% 0 78% 0); transform: translateX(-4px);
+             text-shadow: 3px 0 0 rgba(188,71,73,.55), -2px 0 0 rgba(212,163,115,.6); }
+      75%  { clip-path: inset(42% 0 40% 0); transform: translateX(5px);
+             text-shadow: -3px 0 0 rgba(188,71,73,.55), 2px 0 0 rgba(212,163,115,.6); }
+      78%  { clip-path: inset(68% 0 14% 0); transform: translateX(-3px);
+             text-shadow: 2px 0 0 rgba(212,163,115,.5); }
+      81%  { clip-path: inset(24% 0 60% 0); transform: translateX(2px); }
+      83%  { clip-path: none; transform: translateX(0); }
+    }
+
+    /* (b) ARCHIVO LYRA: desgarro CRT clásico -> tear horizontal + split RGB verde
+       fósforo y un "roll" vertical ocasional (pérdida de sincronía). */
+    .lyra-scope .micro-title {
+      animation:
+        micro-flicker 5.5s ease-in-out infinite,
+        frag-lyra 5s steps(1, end) infinite;
+    }
+    @keyframes frag-lyra {
+      0%, 64%, 100% {
+        clip-path: none; transform: translateY(0);
+        text-shadow:
+          0 0 .4px color-mix(in srgb, var(--mt-accent) 70%, transparent),
+          -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 28%, transparent),
+           1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 24%, transparent),
+          0 0 10px color-mix(in srgb, var(--mt-accent) 24%, transparent);
+      }
+      /* tear + split verde (66%..74%) */
+      66%  { clip-path: inset(0 0 66% 0); transform: translateY(-2px);
+             text-shadow: -3px 0 0 rgba(74,246,38,.7), 3px 0 0 rgba(10,120,10,.7); }
+      69%  { clip-path: inset(55% 0 0 0); transform: translateY(2px);
+             text-shadow: 3px 0 0 rgba(74,246,38,.7), -3px 0 0 rgba(10,120,10,.7); }
+      71%  { clip-path: inset(30% 0 36% 0); transform: translateY(-3px);
+             text-shadow: -2px 1px 0 rgba(74,246,38,.6); }
+      /* roll vertical breve (losing sync) */
+      73%  { clip-path: none; transform: translateY(-5px);
+             text-shadow: 0 0 12px rgba(74,246,38,.8); }
+      74%  { clip-path: none; transform: translateY(0); }
+    }
+
+    /* (c) CRONOS-AXIOMA: datamosh frío y bloqueado -> split RGB cian/magenta con
+       saltos escalonados (steps) más duros y rebanadas rectangulares. */
+    .cronos-scope .micro-title {
+      animation:
+        micro-flicker 5.5s ease-in-out infinite,
+        frag-cronos 4.5s steps(1, end) infinite;
+    }
+    @keyframes frag-cronos {
+      0%, 60%, 100% {
+        clip-path: none; transform: translateX(0);
+        text-shadow:
+          0 0 .4px color-mix(in srgb, var(--mt-accent) 70%, transparent),
+          -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 28%, transparent),
+           1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 24%, transparent),
+          0 0 10px color-mix(in srgb, var(--mt-accent) 24%, transparent);
+      }
+      /* bloques datamosh (62%..72%) con split cian/magenta duro y saltos */
+      62%  { clip-path: inset(8% 0 74% 0); transform: translateX(-6px);
+             text-shadow: -6px 0 0 rgba(0,255,255,.7), 6px 0 0 rgba(255,0,255,.7); }
+      65%  { clip-path: inset(40% 0 38% 0); transform: translateX(6px);
+             text-shadow: 6px 0 0 rgba(0,255,255,.65), -6px 0 0 rgba(255,0,255,.65); }
+      67%  { clip-path: inset(62% 0 16% 0); transform: translateX(-4px);
+             text-shadow: -4px 0 0 rgba(0,255,255,.6), 4px 0 0 rgba(255,0,255,.6); }
+      70%  { clip-path: inset(20% 0 54% 0); transform: translateX(3px);
+             text-shadow: 3px 0 0 rgba(0,255,255,.5), -3px 0 0 rgba(255,0,255,.5); }
+      72%  { clip-path: none; transform: translateX(0); }
+    }
+
+    /* Mientras corre una entrada one-shot (.mt-enter-*), ésta debe mandar sobre la
+       ráfaga de fragmentación. Como las reglas de scope (.<scope> .micro-title) de
+       arriba tienen mayor especificidad que .mt-enter-* por sí sola, reafirmamos la
+       entrada con la misma especificidad de scope (y más tarde en orden) para que
+       gane durante ~1s; al retirarse la clase, la fragmentación idle vuelve. La
+       entrada ya empieza/termina en el estado normal, así que no hay salto. */
+    .refugio-scope .mt-enter-refugio { animation: mt-refugio-enter 1s steps(1, end) both; }
+    .lyra-scope .mt-enter-lyra {
+      transform-origin: center;
+      animation: mt-lyra-enter 1.2s cubic-bezier(.16,.84,.3,1) both;
+    }
+    .cronos-scope .mt-enter-cronos { animation: mt-cronos-enter .9s steps(8, end) both; }
+
+    /* =========================================
+       TEXTURAS DE FONDO POR TERMINAL (FEAT-006)
+       Texturas sutiles y temáticas para que las terminales no se vean planas.
+       Solo CSS (gradientes + ruido SVG data-uri), aplicadas como capas de
+       background-image en el PROPIO scope (y en el .crt-container de Cronos), por
+       lo que quedan DETRÁS de todo el contenido en flujo normal y NO interceptan
+       clics ni afectan la legibilidad (baja opacidad/contraste). Las scanlines y
+       el grano son estáticos (sin animación), así que son seguros bajo reduced-motion.
+       ========================================= */
+
+    /* REFUGIO: grano de película tenue + viñeta cálida + franjas de óxido sutiles */
+    .refugio-scope {
+      background-color: var(--color-yermo-bg);
+      background-image:
+        radial-gradient(ellipse 120% 80% at 50% 0%, rgba(212,163,115,.05), transparent 60%),
+        radial-gradient(ellipse 140% 120% at 50% 120%, rgba(188,71,73,.06), transparent 55%),
+        repeating-linear-gradient(0deg, rgba(188,71,73,.035) 0 1px, transparent 1px 7px),
+        radial-gradient(circle at 50% 42%, transparent 55%, rgba(0,0,0,.55) 100%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>");
+      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 160px 160px;
+      background-attachment: fixed, fixed, fixed, fixed, fixed;
+    }
+
+    /* LYRA: scanlines CRT + viñeta/bloom verde + grano fino -> tubo de fósforo */
+    .lyra-scope {
+      background-color: #020202;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(74,246,38,.045) 0 1px, transparent 1px 3px),
+        radial-gradient(ellipse 110% 90% at 50% 50%, rgba(74,246,38,.06), transparent 62%),
+        radial-gradient(circle at 50% 50%, transparent 58%, rgba(0,0,0,.6) 100%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/></svg>");
+      background-size: 100% 3px, 100% 100%, 100% 100%, 150px 150px;
+      background-attachment: fixed, fixed, fixed, fixed;
+    }
+
+    /* CRONOS: textura en la "pantalla" interna (crt-container) -> scanlines +
+       viñeta de curvatura + grano, para que lea como un CRT real. El bezel
+       (hardware-bezel) se mantiene tal cual. */
+    .cronos-scope .crt-container {
+      background-color: #04070a;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(226,232,240,.035) 0 1px, transparent 1px 3px),
+        radial-gradient(ellipse 100% 100% at 50% 50%, transparent 52%, rgba(0,0,0,.65) 100%),
+        radial-gradient(ellipse 130% 90% at 50% 0%, rgba(120,200,255,.045), transparent 60%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>");
+      background-size: 100% 3px, 100% 100%, 100% 100%, 150px 150px;
+    }
+
+    /* MOVIMIENTO REDUCIDO (FEAT-006): detener la fragmentación animada de los
+       títulos (quedan estáticos y legibles, conservando sólo el resplandor base);
+       las texturas de fondo son estáticas y pueden permanecer. */
+    @media (prefers-reduced-motion: reduce) {
+      .refugio-scope .micro-title,
+      .lyra-scope .micro-title,
+      .cronos-scope .micro-title,
+      .refugio-scope .mt-enter-refugio,
+      .lyra-scope .mt-enter-lyra,
+      .cronos-scope .mt-enter-cronos {
+        animation: none; opacity: 1; clip-path: none; transform: none;
+      }
+    }
   </style>
 </head>
 <body>
