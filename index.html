@@ -163,8 +163,9 @@
       .end-credits-small { font-size: 11px !important; }
       /* En móvil los controles globales pasan a una franja fija en el borde inferior;
          subimos el hint de orientación por encima de ella para que no se solapen
-         (la franja ocupa ~61px + safe-area). */
-      .hub-hint { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); max-width: 92vw; }
+         (la franja ocupa ~61px + safe-area). Se usa #hub-hint para ganar especificidad
+         sobre la regla base .hub-hint que aparece más adelante en el documento. */
+      #hub-hint.hub-hint { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); max-width: 92vw; }
     }
     /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
        El video es 16:9 (horizontal). En vertical, 'contain' lo encogía a una banda
