@@ -376,6 +376,49 @@
         min-height: auto;
         padding: calc(58px + env(safe-area-inset-top, 0px)) clamp(18px, 5vw, 28px) calc(72px + env(safe-area-inset-bottom, 0px));
       }
+
+      /* RETOUCH 1: en móvil mostramos la afordancia "Comenzar lectura". Se prefija con
+         #hub-container (especificidad 1,1,0) y aparece después en el documento para
+         ganar a la regla base .hub-scope .hub-start-reading { display:none } (lección
+         de especificidad documentada arriba).
+
+         El chip vive en el DOM como hermana estática de #contenido-escena, pero como la
+         escena COMPLETA (héroe, título, copy, opciones y hasta créditos) se renderiza
+         DENTRO de #contenido-escena, en flujo el chip quedaba por DEBAJO de toda la
+         escena (tras las opciones y los créditos): inservible como "empezar a leer".
+         Por eso en móvil lo fijamos (position:fixed) como una pastilla pequeña y
+         semitransparente anclada abajo a la derecha, CLARAMENTE por encima de la franja
+         de controles inferior (que reserva calc(76px + safe-area) en otras reglas), sin
+         solapar el disparador '☰ Menú' (top-right), la consola #hub-hint (centrada) ni
+         el centro donde viven las .opciones. Al pulsar, hace scroll a la narrativa de la
+         escena vigente (ver handler initStartReading). Además se autooculta (.is-hidden)
+         en cuanto la lectura arranca, de modo que ya no está cuando se llega a las
+         .opciones al pie y nunca puede taparlas. z-index bajo la barra fija (999999)
+         pero sobre el contenido. */
+      #hub-container .hub-start-reading {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        position: fixed; z-index: 99998;
+        right: 14px; left: auto; top: auto;
+        bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 12px);
+        margin: 0; padding: 9px 14px;
+        background: rgba(6, 16, 13, 0.82); color: var(--accent);
+        border: 1px solid var(--hair-strong); border-radius: 4px 12px 4px 12px;
+        font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer;
+        backdrop-filter: blur(6px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
+        transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+      }
+      /* Una vez que la lectura ha comenzado (el usuario desplazó la narrativa a la
+         vista), la pastilla "comenzar lectura" se autooculta: así nunca puede solapar
+         las .opciones de decisión al pie de la escena. Reaparece al volver arriba
+         (nueva escena). Usa la transición de opacity ya declarada; bajo
+         prefers-reduced-motion el fundido de 0.18s es admisible. */
+      #hub-container .hub-start-reading.is-hidden { opacity: 0; pointer-events: none; }
+      #hub-container .hub-start-reading span { color: var(--accent-strong); font-size: 1rem; line-height: 1; }
+      #hub-container .hub-start-reading:hover { border-color: var(--accent); background: rgba(16, 42, 34, 0.9); color: var(--accent-strong); }
+      #hub-container .hub-start-reading:active { background: rgba(6, 16, 13, 0.98); }
+      #hub-container .hub-start-reading:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     }
     /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
        El video es 16:9 (horizontal). En vertical, 'contain' lo encogía a una banda
@@ -611,6 +654,10 @@
     /* Columna narrativa: contenido centrado con un ancho de lectura cómodo (~880px) que no se estira de borde a borde en pantallas anchas. */
     .hub-scope .narrative-area { width: 100%; min-height: 100vh; min-height: 100svh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) clamp(96px, 12vh, 150px); }
     .hub-scope #contenido-escena { width: 100%; max-width: 880px; margin-inline: auto; }
+    /* RETOUCH 1: afordancia móvil "Comenzar lectura". OCULTA por defecto (escritorio);
+       solo se muestra dentro de @media (max-width:850px) más abajo. Estética consola:
+       DM Mono, borde hairline fuerte, acento esmeralda, radio cohesivo. */
+    .hub-scope .hub-start-reading { display: none; }
     .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; height: 100dvh; box-sizing: border-box; padding: var(--space-5) 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid var(--hair);}
     .hub-scope .inventario-box { border-top: 1px solid var(--hair); padding-top: var(--space-4); }
     .hub-scope .choice-feedback {
@@ -738,6 +785,59 @@
     .hub-scope .btn-enlace:active { transform: translateX(1px); }
     .hub-scope .btn-enlace:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .hub-scope .btn-enlace i { font-size: 1.2rem; color: var(--accent); }
+
+    /* =========================================
+       RETOUCH 2: CAJAS FLOTANTES DEL SIDEBAR / CAJÓN
+       Antes las cuatro cajas (grupo .progress-nav 'Ruta de la simulación', .enlaces-remotos,
+       .metadata, .inventario-box) eran texto sobre un gradiente translúcido contra el
+       fondo (foto de montañas), y en la última escena el texto se desvanecía (ver
+       before-desktop-hub-end.png). Les damos una SUPERFICIE sólida basada en tokens
+       (lavado oscuro opaco sobre --ink-2), filete hairline y sombra suave para que el
+       texto recupere contraste y las cajas "floten" sobre el fondo.
+
+       SELECTOR: los boxes son los <div> hijos directos de #hub-sidebar. El único otro
+       hijo directo es el <button> #hub-drawer-close (no es div), así que '> div' aísla
+       exactamente las cuatro cajas sin tocar contenido/markup/behaviour. Se prefija con
+       #hub-container para ganar especificidad a las reglas base. Aplica igual en
+       escritorio y en el cajón móvil (que ya usa background:var(--ink-2)).
+       ========================================= */
+    #hub-container #hub-sidebar > div {
+      background:
+        linear-gradient(180deg, rgba(10,22,18,.82), rgba(6,16,13,.88)),
+        var(--ink-2);
+      border: 1px solid var(--hair-strong);
+      border-radius: 10px;
+      padding: var(--space-4);
+      box-shadow: 0 6px 20px rgba(0,0,0,.38);
+      transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+    }
+    /* Las cajas .enlaces-remotos / .inventario-box traían border-top + padding-top como
+       separador cuando eran bloques apilados sin fondo. Ahora que cada caja es una
+       tarjeta autónoma con borde completo, normalizamos el border-top al borde de la
+       tarjeta (el borde completo ya las separa) para que no destaque un filete distinto. */
+    #hub-container #hub-sidebar > div.enlaces-remotos,
+    #hub-container #hub-sidebar > div.inventario-box {
+      border-top: 1px solid var(--hair-strong);
+    }
+    /* Filete esmeralda tenue en la tarjeta de terminales para darle jerarquía
+       (su kicker ya es --accent) sin romper la cohesión. */
+    #hub-container #hub-sidebar > div.enlaces-remotos { border-color: var(--hair-accent); }
+    /* Lift sutil al pasar el cursor (se anula bajo reduced-motion más abajo). */
+    #hub-container #hub-sidebar > div:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.45);
+      border-color: var(--hair-accent);
+    }
+    /* El #choice-feedback dentro de la tarjeta ya tenía su propio fondo tenue; sobre la
+       tarjeta más sólida sigue leyéndose bien, no hace falta tocarlo. Nos aseguramos de
+       que el texto de las listas/labels herede el contraste alto del sistema. */
+    #hub-container #hub-sidebar > div .side-kicker { opacity: 1; }
+
+    /* RETOUCH 2 (reduced-motion): sin lift ni transición en las tarjetas. */
+    @media (prefers-reduced-motion: reduce) {
+      #hub-container #hub-sidebar > div { transition: none; }
+      #hub-container #hub-sidebar > div:hover { transform: none; }
+    }
 
     /* =========================================
        FEAT-006 (gap 4): BARRAS DE DESPLAZAMIENTO FINAS Y TEMATIZADAS
@@ -1596,6 +1696,95 @@
        contexto propio para que pinten delante sin tocar el layout. */
     .cronos-scope .crt-container > * { position: relative; z-index: 1; }
 
+    /* =========================================
+       RETOUCH 3: ATMÓSFERA CRT 80s / POSAPOCALÍPTICA REFORZADA (por terminal)
+       Se construye SOBRE las texturas y la foto flotante (::before) existentes, sin
+       tocar layout, navegación, single-scroll móvil, alcanzabilidad de opciones ni el
+       colchón de scroll. Cada overlay nuevo vive en ::after como capa DECORATIVA:
+         - pointer-events:none  -> nunca roba clics.
+         - z-index:2 por encima de la foto (::before z-index:0) pero el contenido sigue
+           elevado a z-index:1 con glow/contraste legible; los overlays son de muy baja
+           opacidad, así que el texto se lee por encima sin problema.
+       Cada scope conserva su identidad: Refugio ámbar/decaído, Lyra fósforo verde,
+       Cronos CRT frío de hardware. Todo CSS-only, sin bucles JS. El destello de
+       encendido es un one-shot atado a la clase .app-enter (que AppManager añade al
+       lanzar la terminal y retira a los 460ms) -> sin timer JS. Todas las animaciones
+       nuevas se neutralizan en el bloque reduced-motion de ~línea 1608.
+       ========================================= */
+
+    /* REFUGIO: tinte ámbar/decaído + viñeta polvorienta. Capa quieta (sin scanline
+       animada; el yermo "respira" con un parpadeo de retención horizontal MUY lento y
+       sutil para evocar un monitor degradado sin dañar la legibilidad del arena). */
+    .refugio-scope::after {
+      content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+      background:
+        radial-gradient(ellipse 120% 100% at 50% 50%, transparent 58%, rgba(40,20,8,.42) 100%),
+        linear-gradient(180deg, rgba(212,163,115,.06), rgba(188,71,73,.05));
+      mix-blend-mode: screen; opacity: .9;
+      animation: crtDecayFlicker 7s steps(1, end) infinite;
+    }
+    /* Glow cálido muy leve en títulos/cuerpo para sellar el fósforo ámbar degradado. */
+    .refugio-scope .micro-title { text-shadow: 0 0 6px rgba(212,163,115,.35); }
+    .refugio-scope #ref-texto-narrativa { text-shadow: 0 0 2px rgba(212,163,115,.12); }
+    @keyframes crtDecayFlicker {
+      0%, 97%, 100% { opacity: .9; }
+      98%           { opacity: .78; }
+      99%           { opacity: .96; }
+    }
+
+    /* LYRA: CRT de fósforo verde. Scanline ROLANTE lenta (background-position animado,
+       baja opacidad) + viñeta de curvatura + glow de fósforo en el texto. */
+    .lyra-scope::after {
+      content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(74,246,38,.06) 0 2px, transparent 2px 4px),
+        radial-gradient(ellipse 115% 100% at 50% 50%, transparent 55%, rgba(0,12,0,.5) 100%);
+      background-size: 100% 4px, 100% 100%;
+      opacity: .7;
+      animation: lyraScanRoll 8s linear infinite;
+    }
+    .lyra-scope .micro-title { text-shadow: 0 0 8px rgba(74,246,38,.5); }
+    /* Glow de fósforo sutil en el cuerpo/encabezados de la terminal Lyra. */
+    .lyra-scope .font-crt, .lyra-scope .terminal-panel { text-shadow: 0 0 5px rgba(74,246,38,.28); }
+    @keyframes lyraScanRoll {
+      0%   { background-position: 0 0, center; }
+      100% { background-position: 0 64px, center; }
+    }
+
+    /* CRONOS: CRT frío de hardware. La curvatura/viñeta y el borde de aberración
+       cromática viven en el ::after de la PANTALLA interna (.crt-container), no en el
+       bezel. Jitter de retención horizontal muy sutil. */
+    .cronos-scope .crt-container::after {
+      content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background:
+        radial-gradient(ellipse 100% 100% at 50% 50%, transparent 50%, rgba(0,0,0,.6) 100%),
+        linear-gradient(90deg, rgba(255,0,60,.04), transparent 6%, transparent 94%, rgba(0,120,255,.05)),
+        repeating-linear-gradient(0deg, rgba(226,232,240,.045) 0 1px, transparent 1px 3px);
+      opacity: .85;
+      animation: cronosJitter 6s steps(1, end) infinite;
+    }
+    /* Glow frío de fósforo en el texto del CRT (usa el token de fósforo del tema). */
+    .cronos-scope .crt-container { text-shadow: 0 0 5px color-mix(in srgb, var(--term-phosphor, #e2e8f0) 40%, transparent); }
+    .cronos-scope .micro-title { text-shadow: 0 0 8px color-mix(in srgb, var(--term-phosphor, #e2e8f0) 55%, transparent); }
+    @keyframes cronosJitter {
+      0%, 92%, 100% { transform: translateX(0); }
+      94%           { transform: translateX(0.6px); }
+      96%           { transform: translateX(-0.5px); }
+      98%           { transform: translateX(0.3px); }
+    }
+
+    /* DESTELLO DE ENCENDIDO (one-shot): al lanzar la terminal, AppManager añade la clase
+       .app-enter (y la retira a los 460ms). Enganchamos un "power-on" CSS al scope activo
+       con esa clase -> un pop de brillo/contraste que se reproduce UNA vez. Sin JS timer. */
+    .refugio-scope.app-enter, .lyra-scope.app-enter, .cronos-scope.app-enter {
+      animation: app-enter-fx .44s var(--ease, cubic-bezier(.22,.61,.36,1)), crtPowerOn .55s ease-out both;
+    }
+    @keyframes crtPowerOn {
+      0%   { filter: brightness(2.2) contrast(.6); }
+      35%  { filter: brightness(1.15) contrast(1.1); }
+      100% { filter: brightness(1) contrast(1); }
+    }
+
     @keyframes terminalDrift {
       0%   { transform: translate3d(-5px, 3px, 0) scale(1.03); }
       50%  { transform: translate3d(4px, -4px, 0) scale(1.05); }
@@ -1620,6 +1809,20 @@
       .lyra-scope::before,
       .cronos-scope .crt-container::before {
         animation: none; transform: none;
+      }
+      /* RETOUCH 3 (reduced-motion): los overlays CRT nuevos (parpadeo de decaimiento,
+         scanline rolante, jitter) quedan ESTÁTICOS; se conserva su tinte/viñeta/glow
+         (que no es movimiento). El destello de encendido one-shot también se desactiva,
+         dejando solo la entrada base app-enter-fx que ya se neutraliza más arriba. */
+      .refugio-scope::after,
+      .lyra-scope::after,
+      .cronos-scope .crt-container::after {
+        animation: none; transform: none;
+      }
+      .refugio-scope.app-enter,
+      .lyra-scope.app-enter,
+      .cronos-scope.app-enter {
+        animation: none;
       }
     }
   </style>
@@ -1701,6 +1904,20 @@
     <div id="hub-drawer-scrim" class="hub-drawer-scrim" hidden></div>
     <div class="narrative-area" id="narrative-area">
       <div id="contenido-escena"></div>
+      <!-- RETOUCH 1 (solo móvil): afordancia "Comenzar lectura". Vive estática como
+           hermana de #contenido-escena (que se reconstruye en cada render), así que
+           NO se destruye al cambiar de escena. En escritorio queda display:none. En
+           móvil el CSS la vuelve position:fixed (pastilla anclada abajo a la derecha,
+           por encima de la franja de controles) para que sea visible al entrar a la
+           escena y no quede sepultada tras las opciones/créditos del render. Al pulsar,
+           busca FRESCO el cuerpo narrativo de la escena vigente (#contenido-escena
+           .scene-copy, con reserva a #contenido-escena) y lo trae a la vista con
+           scrollIntoView (smooth / auto bajo reduced-motion). No altera navegación ni
+           auto-avanza escenas. -->
+      <button type="button" id="hub-start-reading" class="hub-start-reading"
+              aria-label="Comenzar lectura de la narrativa">
+        <span aria-hidden="true">▾</span> Comenzar lectura
+      </button>
     </div>
 
     <div class="sidebar" id="hub-sidebar">
@@ -3509,6 +3726,49 @@
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape' && hub.classList.contains('drawer-open')) setOpen(false);
         });
+      })();
+
+      // RETOUCH 1: afordancia móvil "Comenzar lectura". Listener único; busca FRESCO
+      // el cuerpo narrativo de la escena vigente en cada clic (renderEscena reconstruye
+      // #contenido-escena, así que no cacheamos el nodo) y lo trae a la vista. No cambia
+      // navegación ni auto-avanza escenas: solo hace scroll. En escritorio el botón está
+      // display:none vía CSS, por lo que este handler es inofensivo allí.
+      (function initStartReading() {
+        const trigger = document.getElementById('hub-start-reading');
+        if (!trigger) return;
+        trigger.addEventListener('click', () => {
+          const target = document.querySelector('#contenido-escena .scene-copy')
+                      || document.getElementById('contenido-escena');
+          if (!target) return;
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+          try { SfxEngine.select(); } catch (e) {}
+        });
+
+        // La pastilla es una pista de "empezar": una vez que la lectura arranca (se ha
+        // desplazado la narrativa a la vista) se autooculta, de modo que ya no está
+        // presente cuando el lector llega a las .opciones al pie y nunca las tapa.
+        // Reaparece cerca del tope (nueva escena, que al navegar vuelve arriba).
+        // El hub desplaza sobre #hub-container (.app-container con overflow-y:auto),
+        // no sobre window; leemos su scrollTop y, defensivamente, también el de window.
+        const scroller = document.getElementById('hub-container');
+        const SHOW_AT = 120; // px desde el tope por debajo de los cuales se muestra
+        const syncStartCue = () => {
+          const top = Math.max(
+            scroller ? scroller.scrollTop : 0,
+            window.scrollY || document.documentElement.scrollTop || 0
+          );
+          trigger.classList.toggle('is-hidden', top > SHOW_AT);
+        };
+        let ticking = false;
+        const onScroll = () => {
+          if (ticking) return;
+          ticking = true;
+          window.requestAnimationFrame(() => { syncStartCue(); ticking = false; });
+        };
+        if (scroller) scroller.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('scroll', onScroll, { passive: true });
+        syncStartCue();
       })();
     });
 
