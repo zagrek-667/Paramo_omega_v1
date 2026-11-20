@@ -34,17 +34,23 @@
        PANTALLA DE VIDEO INTRODUCTORIO (CON AUTO-ESCAPE DE SEGURIDAD)
        ========================================= */
     #intro-video-overlay {
-      position: fixed; inset: 0; width: 100vw; height: 100vh;
+      position: fixed; inset: 0; width: 100vw;
+      /* En móvil 100vh queda bajo la barra del navegador y oculta los controles:
+         usamos el viewport dinámico/pequeño real para que nada quede fuera de pantalla. */
+      height: 100vh; height: 100dvh; min-height: 100svh;
       background: #051410; z-index: 9999999; display: flex;
       justify-content: center; align-items: center; flex-direction: column;
       transition: opacity 0.8s ease;
     }
     #intro-video-overlay.fade-out { opacity: 0; pointer-events: none; }
     #intro-video-player {
-      width: 100%; height: 100%; object-fit: cover;
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      background: #051410;
     }
     .intro-controls {
-      position: absolute; bottom: 40px; right: 40px; z-index: 10;
+      position: absolute; z-index: 10;
+      bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+      right: calc(40px + env(safe-area-inset-right, 0px));
       display: flex; gap: 15px; align-items: center;
     }
     .btn-intro {
@@ -97,7 +103,27 @@
       .hub-scope #contenido-escena { max-width: 720px; }
       .hub-scope .story-header { padding: 24px 0 22px; }
       .hub-scope .story-header h1 { font-size: clamp(2.2rem, 9vw, 2.9rem); }
-      .intro-controls { bottom: 20px; right: 20px; left: 20px; justify-content: center; flex-wrap: wrap; }
+      /* En móvil el botón "Ingresar al Hub" se centra en una franja inferior,
+         con colchón de safe-area para no quedar bajo la barra del navegador ni el
+         indicador de inicio de iOS. Queda siempre visible y tocable. */
+      .intro-controls {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        right: clamp(16px, 4vw, 20px); left: clamp(16px, 4vw, 20px);
+        justify-content: center; flex-wrap: wrap;
+      }
+      .intro-controls .btn-intro { min-height: 44px; font-size: 14px; padding: 14px 28px; }
+      /* El botón grande "Iniciar" y su texto de ayuda deben caber en portrait:
+         añadimos colchón vertical de safe-area para que nada roce los bordes. */
+      #intro-start-screen {
+        gap: 18px;
+        padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+      }
+      .btn-intro-start { min-height: 44px; font-size: 18px; padding: 18px 40px; }
+    }
+    /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
+       fondo oscuro, sin recortar información. En horizontal/escritorio sigue en cover. */
+    @media (max-width: 850px) and (orientation: portrait) {
+      #intro-video-player { object-fit: contain; }
     }
     @media (max-width: 480px) {
       /* Pantallas estrechas (390/360px): texto sin desbordes horizontales. El padding
