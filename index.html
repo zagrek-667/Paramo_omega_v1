@@ -457,6 +457,48 @@
       #decision-pulse.dp-glitch.dp-on::before,
       #decision-pulse.dp-on::after { animation: none; opacity: 0; }
     }
+
+    /* =========================================
+       TÍTULOS DE MICROSITIOS: "droop" futurista ligero
+       Tratamiento SUTIL y aditivo solo para los títulos de las tres terminales
+       (clase .micro-title). Mantiene el color/tamaño existente de cada título y
+       añade por encima: una leve aberración cromática (text-shadow ~1px), un
+       resplandor suave del acento de cada terminal y un parpadeo CRT lento y
+       discreto. NO se aplica al hub (sus títulos no llevan .micro-title).
+       ========================================= */
+    .micro-title {
+      --mt-accent: currentColor;      /* acento = color propio del título por defecto */
+      --mt-ghost-a: #22d3ee;          /* fantasma cian (aberración) */
+      --mt-ghost-b: #f0f;             /* fantasma magenta (aberración) */
+      text-shadow:
+        0 0 .4px color-mix(in srgb, var(--mt-accent) 70%, transparent),
+        -1px 0 .6px color-mix(in srgb, var(--mt-ghost-a) 28%, transparent),
+         1px 0 .6px color-mix(in srgb, var(--mt-ghost-b) 24%, transparent),
+        0 0 10px color-mix(in srgb, var(--mt-accent) 24%, transparent);
+      animation: micro-flicker 5.5s ease-in-out infinite;
+      will-change: opacity, text-shadow;
+    }
+    /* Acento por terminal (coincide con la estética de cada una). */
+    .refugio-scope .micro-title { --mt-accent: #d4a373; }
+    .lyra-scope    .micro-title { --mt-accent: #4af626; }
+    .cronos-scope  .micro-title { --mt-accent: var(--term-phosphor, #e2e8f0); }
+
+    /* Parpadeo CRT muy leve y lento: variaciones minúsculas de opacidad y brillo
+       del resplandor; nunca desplaza ni emborrona el texto (sigue legible). */
+    @keyframes micro-flicker {
+      0%, 100% { opacity: 1; }
+      47%      { opacity: 1; }
+      48%      { opacity: .94; }
+      49%      { opacity: 1; }
+      72%      { opacity: 1; }
+      73%      { opacity: .97; }
+      74%      { opacity: 1; }
+    }
+
+    /* MOVIMIENTO REDUCIDO: sin parpadeo; se conserva solo el resplandor/sombra estática. */
+    @media (prefers-reduced-motion: reduce) {
+      .micro-title { animation: none; opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -556,7 +598,7 @@
   <!-- APP 2: REFUGIO ZERO -->
   <div id="refugio-container" class="app-container refugio-scope min-h-screen flex-col">
     <header class="border-b border-[#d4a373]/30 p-4 flex justify-between items-center bg-[#0a0a09]">
-        <h1 class="text-2xl md:text-3xl text-[#d4a373] tracking-widest m-0">REFUGIO <span class="text-white">ZERO</span></h1>
+        <h1 class="text-2xl md:text-3xl text-[#d4a373] tracking-widest m-0 micro-title">REFUGIO <span class="text-white">ZERO</span></h1>
         <div class="flex gap-4 items-center w-1/2 max-w-md">
             <div class="flex-1"><div class="flex justify-between text-xs text-gray-400"><span>H2O</span><span id="txt-hud-agua">80%</span></div><div class="h-2 bg-[#111] border border-[#333] flex" id="bar-agua"></div></div>
             <div class="flex-1"><div class="flex justify-between text-xs text-gray-400"><span>POLVO</span><span id="txt-hud-alimento">70%</span></div><div class="h-2 bg-[#111] border border-[#333] flex" id="bar-alimento"></div></div>
@@ -565,7 +607,7 @@
     </header>
     <main class="flex-grow p-4 max-w-4xl mx-auto w-full flex flex-col">
         <div class="panel-borde p-6 flex-grow flex flex-col">
-            <h2 id="ref-titulo-escenario" class="teko-font text-3xl text-white border-b border-dashed border-[#d4a373]/30 pb-3 mb-4">Conectando...</h2>
+            <h2 id="ref-titulo-escenario" class="teko-font text-3xl text-white border-b border-dashed border-[#d4a373]/30 pb-3 mb-4 micro-title">Conectando...</h2>
             <div class="bg-black/80 p-6 mb-4 border border-gray-800 rounded flex-grow overflow-y-auto text-base">
                 <div id="ref-texto-narrativa" class="text-gray-300 leading-relaxed whitespace-pre-wrap"></div>
             </div>
@@ -584,12 +626,12 @@
   <div id="lyra-container" class="app-container lyra-scope flex-col p-4">
     <div id="lyra-boot-screen" class="absolute inset-0 z-50 bg-[#020202] flex justify-center items-center p-4">
         <div class="terminal-panel p-8 w-full max-w-xl text-center">
-            <h1 class="font-crt text-5xl text-sysGreen mb-6">BIOS v4.0.21 // LYRA</h1>
+            <h1 class="font-crt text-5xl text-sysGreen mb-6 micro-title">BIOS v4.0.21 // LYRA</h1>
             <button onclick="LyraApp.bootSystem()" id="lyra-btn-boot" class="btn-cmd w-full py-4 text-2xl font-crt">[ INICIAR ENLACE REMOTO ]</button>
         </div>
     </div>
     <header class="w-full p-4 flex justify-between items-center terminal-panel max-w-6xl mx-auto mb-4">
-        <h1 class="font-crt text-2xl text-sysGreen flex items-center gap-2"><i class="ph ph-broadcast"></i> LINK_ESTABLECIDO // LYRA</h1>
+        <h1 class="font-crt text-2xl text-sysGreen flex items-center gap-2 micro-title"><i class="ph ph-broadcast"></i> LINK_ESTABLECIDO // LYRA</h1>
         <button onclick="LyraApp.toggleCodex()" class="btn-cmd px-4 py-2 text-xs font-bold">DATABANK</button>
     </header>
     <aside id="lyra-codex-panel" class="fixed right-0 top-0 h-full w-full md:w-96 terminal-panel z-30 flex flex-col p-6 transform translate-x-full transition-transform duration-300 bg-[#020202]">
@@ -602,7 +644,7 @@
     <main id="lyra-scene-container" class="w-full max-w-6xl mx-auto flex-grow flex flex-col md:flex-row gap-6 hidden">
         <div class="w-full md:w-2/3 flex flex-col gap-4">
             <div class="terminal-panel p-6 flex-grow flex flex-col">
-                <h2 id="lyra-scene-title" class="font-crt text-3xl text-sysGreen border-b border-sysGreenDim pb-2 mb-4">ENLACE</h2>
+                <h2 id="lyra-scene-title" class="font-crt text-3xl text-sysGreen border-b border-sysGreenDim pb-2 mb-4 micro-title">ENLACE</h2>
                 <div id="lyra-narrative-text" class="font-crt text-2xl text-sysGreen leading-snug whitespace-pre-wrap flex-grow overflow-y-auto"></div>
             </div>
             <div id="lyra-decision-matrix" class="terminal-panel p-4 hidden">
@@ -621,14 +663,14 @@
     <div class="hardware-bezel">
       <div class="crt-container" id="cro-crt-main">
           <div id="cro-boot-screen" class="flex-grow flex flex-col justify-center items-center">
-              <h1 class="text-4xl md:text-6xl text-term-phosphor mb-8 font-bold tracking-widest text-center">CRONOS-AXIOMA</h1>
+              <h1 class="text-4xl md:text-6xl text-term-phosphor mb-8 font-bold tracking-widest text-center micro-title">CRONOS-AXIOMA</h1>
               <button onclick="CronosApp.boot()" class="px-8 py-4 border-2 border-term-phosphor text-term-phosphor hover:bg-term-phosphor hover:text-black transition-all">
                   [ INICIAR SESIÓN ]
               </button>
           </div>
           <div class="hidden flex-grow flex flex-col md:flex-row gap-8" id="cro-main-interface">
               <main class="flex-grow flex flex-col">
-                  <h2 id="cro-node-title" class="text-3xl text-term-phosphor border-b border-term-rust pb-3 mb-4 uppercase font-bold">Cargando...</h2>
+                  <h2 id="cro-node-title" class="text-3xl text-term-phosphor border-b border-term-rust pb-3 mb-4 uppercase font-bold micro-title">Cargando...</h2>
                   <div id="cro-story-text" class="text-term-phosphor text-lg leading-relaxed whitespace-pre-wrap flex-grow overflow-y-auto mb-6"></div>
                   <div id="cro-options"></div>
               </main>
