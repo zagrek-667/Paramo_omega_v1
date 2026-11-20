@@ -8,6 +8,11 @@
   <!-- Favicon SVG embebido (hexágono esmeralda sobre fondo oscuro, acorde a la marca). Evita el 404 de favicon.ico sin subir binarios. -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='12'%20fill='%23051410'/%3E%3Cpath%20d='M32%2012L49%2022V42L32%2052L15%2042V22Z'%20fill='none'%20stroke='%2310b981'%20stroke-width='3'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='5'%20fill='%2310b981'/%3E%3C/svg%3E">
   
+  <!-- Precarga del video introductorio: sugiere al navegador que empiece a buscar
+       Intro.mp4 cuanto antes (complementa preload="auto" del <video>) para que, al
+       pulsar Iniciar, el arranque se sienta más rápido. No cambia el src ni la ruta. -->
+  <link rel="preload" as="video" href="Intro.mp4">
+
   <!-- Fonts Compartidas -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -115,6 +120,43 @@
     /* Estado de carga tras pulsar Iniciar: el botón pasa a "Cargando…" mientras el
        video almacena en búfer, para que la pulsación nunca se sienta congelada. */
     .btn-intro-start.is-loading { cursor: progress; opacity: 0.9; }
+
+    /* Giro real para el icono de carga (antes se cambiaba a ph-circle-notch pero
+       quedaba estático). Fino y en acento esmeralda, acorde a la intro. */
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    /* Al pulsar Iniciar: el icono de carga del botón gira. */
+    .btn-intro-start.is-loading #btn-start-intro-icon { animation: spin 0.9s linear infinite; }
+
+    /* Indicador de disponibilidad ANTES de pulsar: mientras el video almacena en
+       búfer hacia un estado reproducible, la pantalla de inicio se marca como
+       "preparando" (spinner sutil junto a la ayuda). Cuando queda lista, pasa a
+       "ready" con un pulso de invitación en el botón. El usuario puede pulsar
+       Iniciar en cualquier momento; esto es sólo señalización, nunca bloqueo. */
+    .intro-ready-spinner {
+      display: none; width: 13px; height: 13px; margin-right: 8px;
+      border: 2px solid rgba(16, 185, 129, 0.3); border-top-color: #10b981;
+      border-radius: 50%; vertical-align: -2px;
+      animation: spin 0.9s linear infinite;
+    }
+    #intro-start-screen.is-preparing .intro-ready-spinner { display: inline-block; }
+    /* Pulso de invitación en el botón una vez que la experiencia está lista. */
+    @keyframes intro-ready-pulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.45); }
+      50% { box-shadow: 0 0 46px rgba(16, 185, 129, 0.85); }
+    }
+    #intro-start-screen.is-ready .btn-intro-start:not(.is-loading) {
+      animation: intro-ready-pulse 2s ease-in-out infinite;
+    }
+
+    /* MOVIMIENTO REDUCIDO: sin giro ni pulso. El spinner se detiene (y el inline
+       se oculta), el icono de carga queda quieto y el botón listo no late; el
+       usuario se guía por el texto ("Preparando…" / "Cargando…" / "lista"). */
+    @media (prefers-reduced-motion: reduce) {
+      .btn-intro-start.is-loading #btn-start-intro-icon,
+      .intro-ready-spinner,
+      #intro-start-screen.is-ready .btn-intro-start:not(.is-loading) { animation: none; }
+      #intro-start-screen.is-preparing .intro-ready-spinner { display: none; }
+    }
 
     /* =========================================
        SISTEMA DE NAVEGACIÓN GLOBAL
@@ -1005,7 +1047,7 @@
       <button id="btn-start-intro" class="btn-intro-start" onclick="IntroManager.startVideo()">
         <i class="ph ph-play" id="btn-start-intro-icon"></i> <span id="btn-start-intro-label">Iniciar</span>
       </button>
-      <p class="intro-start-hint" id="intro-start-hint">Pulsa Iniciar para comenzar la experiencia</p>
+      <p class="intro-start-hint" id="intro-start-hint"><span class="intro-ready-spinner" id="intro-ready-spinner" aria-hidden="true"></span><span id="intro-start-hint-text">Pulsa Iniciar para comenzar la experiencia</span></p>
     </div>
 
     <!-- Controles visibles una vez iniciado el video -->
@@ -1196,6 +1238,30 @@
 
         // El video NO arranca solo. Espera a que el usuario pulse "Iniciar".
 
+        // INDICADOR DE DISPONIBILIDAD PREVIO: mientras el video precarga (preload="auto"
+        // + <link rel=preload>) reflejamos el estado en la pantalla de inicio para que
+        // el usuario sepa si la experiencia se está preparando o ya está lista. Esto es
+        // sólo señalización: nunca bloquea; el usuario puede pulsar Iniciar cuando quiera.
+        this.markPreparing();
+        const onReady = () => this.markReady();
+        // Umbral de "lista": readyState >= HAVE_FUTURE_DATA (3) o búfer >= ~3s.
+        this.video.addEventListener('canplaythrough', onReady, { once: true });
+        this.video.addEventListener('canplay', () => {
+          if (this.video.readyState >= 3 || this.hasEnoughBuffer()) onReady();
+        });
+        this.video.addEventListener('progress', () => {
+          if (this.video.readyState >= 3 || this.hasEnoughBuffer()) onReady();
+        });
+        // Por si el navegador ya tenía datos antes de registrar los listeners.
+        if (this.video.readyState >= 3) onReady();
+        // Red de seguridad: si tras 8s el video no reporta estar listo (o falla),
+        // marcamos "lista" igualmente para no dejar el indicador girando sin fin.
+        this.readyTimeout = setTimeout(onReady, 8000);
+        // Si el video falla ANTES de iniciar, no atrapamos al usuario: dejamos la
+        // pantalla en estado "lista" para que pueda pulsar Iniciar (el flujo de
+        // error existente lo llevará al Hub).
+        this.video.addEventListener('error', () => { if (!this.started) this.markReady(); });
+
         // Si el video termina, entra al Hub
         this.video.addEventListener('ended', () => {
           this.enterExperience();
@@ -1208,6 +1274,38 @@
             this.enterExperience();
           }
         });
+      },
+
+      isReady: false,
+      readyTimeout: null,
+
+      // ¿Hay al menos ~3s de video almacenados desde el inicio?
+      hasEnoughBuffer: function() {
+        try {
+          const b = this.video.buffered;
+          return b && b.length > 0 && b.end(b.length - 1) >= 3;
+        } catch (e) { return false; }
+      },
+
+      // Estado "preparando": spinner sutil + copia que indica que carga en segundo plano.
+      markPreparing: function() {
+        if (this.isReady || this.started) return;
+        const screen = document.getElementById('intro-start-screen');
+        const hintText = document.getElementById('intro-start-hint-text');
+        if (screen) { screen.classList.add('is-preparing'); screen.classList.remove('is-ready'); }
+        if (hintText) hintText.textContent = 'Preparando experiencia…';
+      },
+
+      // Estado "lista": quita el spinner, invita a pulsar y añade el pulso del botón.
+      markReady: function() {
+        if (this.isReady) return;
+        this.isReady = true;
+        if (this.readyTimeout) { clearTimeout(this.readyTimeout); this.readyTimeout = null; }
+        if (this.started) return; // ya pulsó: respeta el estado "Cargando…"
+        const screen = document.getElementById('intro-start-screen');
+        const hintText = document.getElementById('intro-start-hint-text');
+        if (screen) { screen.classList.remove('is-preparing'); screen.classList.add('is-ready'); }
+        if (hintText) hintText.textContent = 'Experiencia lista \u25b8';
       },
 
       // Arranca el video desde el principio y CON SONIDO al pulsar el usuario.
@@ -1225,6 +1323,10 @@
         // Con preload="metadata", el video empieza a almacenar en búfer al pulsar.
         // Mostramos un estado "Cargando…" (texto, sin animación obligatoria) para
         // que la pulsación nunca se sienta congelada mientras llega el primer frame.
+        // Dejamos de mostrar la señalización previa (preparando/lista) y su red de
+        // seguridad: a partir de aquí manda el estado "Cargando…" hasta el primer frame.
+        if (this.readyTimeout) { clearTimeout(this.readyTimeout); this.readyTimeout = null; }
+        if (startScreen) startScreen.classList.remove('is-preparing', 'is-ready');
         if (startBtn) { startBtn.classList.add('is-loading'); startBtn.disabled = true; }
         if (startIcon) startIcon.className = 'ph ph-circle-notch';
         if (startLabel) startLabel.textContent = 'Cargando…';
