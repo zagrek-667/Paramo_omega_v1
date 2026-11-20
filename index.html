@@ -66,6 +66,7 @@
     .btn-intro:hover {
       background: #10b981; color: #051410; box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
     }
+    .btn-intro:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
     /* Pantalla de inicio (botón grande centrado antes de reproducir el video) */
     #intro-start-screen {
       position: absolute; inset: 0; z-index: 20; display: flex;
@@ -82,6 +83,7 @@
       box-shadow: 0 0 30px rgba(16, 185, 129, 0.45); display: flex; align-items: center; gap: 14px;
     }
     .btn-intro-start:hover { background: #10b981; color: #051410; box-shadow: 0 0 50px rgba(16, 185, 129, 0.9); transform: scale(1.04); }
+    .btn-intro-start:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
     .intro-start-hint { color: #9bb5a9; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
 
     /* Créditos de cierre de la experiencia: aparecen SÓLO al alcanzar la escena
@@ -108,6 +110,7 @@
     .end-credits-small { font-size: 12px !important; color: #a9c3b8; opacity: 0.92; margin-top: 10px; }
     .end-credits-link { color: #f4e7bd; text-decoration: none; border-bottom: 1px dotted rgba(244,231,189,0.5); }
     .end-credits-link:hover { color: #10b981; border-bottom-color: #10b981; }
+    .end-credits-link:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
 
     /* Estado de carga tras pulsar Iniciar: el botón pasa a "Cargando…" mientras el
        video almacena en búfer, para que la pulsación nunca se sienta congelada. */
@@ -185,6 +188,7 @@
       display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
     .btn-global-control:hover, .btn-global-control.is-on { background: rgba(10, 25, 15, 0.95); color: #10b981; border-color: #10b981; box-shadow: 0 0 12px rgba(16, 185, 129, 0.2); }
+    .btn-global-control:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
 
     /* MÓVIL: los controles globales dejan de flotar sobre la columna de decisiones.
        Pasan a una franja compacta a lo ancho, anclada al borde inferior, con fondo
@@ -274,11 +278,21 @@
     
     .hub-scope .sound-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text-main); padding: 10px 14px; font: 500 .7rem 'DM Mono', monospace; text-transform: uppercase; background: rgba(255,255,255,.05); border: 1px solid var(--border); cursor: pointer; border-radius: 4px; width: 100%; justify-content: center; }
     .hub-scope .sound-control.is-on { color: #102019; background: var(--accent); border-color: var(--accent); font-weight: bold; }
+    .hub-scope .sound-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .hub-scope .progress-nav { display: grid; gap: 4px; }
     .hub-scope .progress-step { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; color: #9bb5a9; font-size: .8rem; text-align: left; background: transparent; border: 0; padding: 6px 0; cursor: pointer; opacity: .6; font-weight: 600; }
     .hub-scope .progress-step img { width: 24px; height: 24px; object-fit: cover; border-radius: 50%; }
     .hub-scope .progress-step.active, .hub-scope .progress-step:hover { opacity: 1; color: var(--accent); }
+    /* FEAT-006 (gap 1): estado VISITADO de los pasos de ruta. Más presente que un
+       paso sin visitar pero sin ganarle al .active (que mantiene opacidad plena +
+       color de acento). Un anillo cian tenue en la miniatura marca "ya recorrido". */
+    .hub-scope .progress-step.visited { opacity: .85; color: #cfe3da; }
+    .hub-scope .progress-step.visited img { box-shadow: 0 0 0 2px rgba(129,217,208,.6); }
+    .hub-scope .progress-step.active.visited { opacity: 1; color: var(--accent); }
+    .hub-scope .progress-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* FEAT-006 (gap 5): micro-indicador "N de 6" bajo la ruta; estética de .side-kicker. */
+    .hub-scope .progress-count { color: var(--muted); font: 500 .66rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .12em; margin: 10px 0 0; opacity: .9; }
     .hub-scope .side-kicker { color: var(--muted); font: 500 .68rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 12px; }
     
     .hub-scope .enlaces-remotos { border-top: 1px dashed var(--accent); padding-top: 20px; }
@@ -287,6 +301,63 @@
     .hub-scope .btn-enlace:active { transform: translateX(1px); }
     .hub-scope .btn-enlace:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .hub-scope .btn-enlace i { font-size: 1.2rem; color: var(--accent); }
+
+    /* =========================================
+       FEAT-006 (gap 4): BARRAS DE DESPLAZAMIENTO FINAS Y TEMATIZADAS
+       Sólo visual; no altera el layout. Esmeralda para el hub/contenedores, fósforo
+       verde para las terminales. Firefox usa scrollbar-width/color.
+       ========================================= */
+    .app-container { scrollbar-width: thin; scrollbar-color: rgba(16,185,129,.35) transparent; }
+    .app-container::-webkit-scrollbar { width: 8px; height: 8px; }
+    .app-container::-webkit-scrollbar-track { background: transparent; }
+    .app-container::-webkit-scrollbar-thumb { background: rgba(16,185,129,.35); border-radius: 4px; }
+    .app-container::-webkit-scrollbar-thumb:hover { background: rgba(16,185,129,.55); }
+    .hub-scope, .hub-scope .narrative-area, .hub-scope .sidebar { scrollbar-width: thin; scrollbar-color: rgba(16,185,129,.4) transparent; }
+    .hub-scope::-webkit-scrollbar, .hub-scope .narrative-area::-webkit-scrollbar, .hub-scope .sidebar::-webkit-scrollbar { width: 8px; }
+    .hub-scope::-webkit-scrollbar-track, .hub-scope .narrative-area::-webkit-scrollbar-track, .hub-scope .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .hub-scope::-webkit-scrollbar-thumb, .hub-scope .narrative-area::-webkit-scrollbar-thumb, .hub-scope .sidebar::-webkit-scrollbar-thumb { background: rgba(16,185,129,.4); border-radius: 4px; }
+    .cronos-scope .crt-container { scrollbar-width: thin; scrollbar-color: rgba(120,255,120,.35) transparent; }
+    .cronos-scope .crt-container::-webkit-scrollbar { width: 8px; }
+    .cronos-scope .crt-container::-webkit-scrollbar-track { background: transparent; }
+    .cronos-scope .crt-container::-webkit-scrollbar-thumb { background: rgba(120,255,120,.35); border-radius: 4px; }
+
+    /* =========================================
+       FEAT-006 (gap 2): AVISO DE ORIENTACIÓN (una vez por sesión)
+       Toast discreto, anclado abajo-centro del hub. No bloquea clics (pointer-events
+       none salvo el aspa de cierre). Aparece/desaparece con un fundido suave.
+       ========================================= */
+    .hub-hint {
+      position: fixed; z-index: 1000; left: 50%; bottom: 26px; transform: translate(-50%, 12px);
+      max-width: min(460px, 86vw); box-sizing: border-box;
+      padding: 13px 40px 13px 16px;
+      background: rgba(5, 20, 16, 0.92); color: #f4e7bd;
+      border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 8px;
+      backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      font-family: 'DM Mono', monospace; font-size: 12.5px; line-height: 1.55; letter-spacing: .02em;
+      opacity: 0; pointer-events: none; transition: opacity .5s ease, transform .5s ease;
+    }
+    .hub-hint.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .hub-hint .hub-hint-close {
+      position: absolute; top: 6px; right: 8px; width: 22px; height: 22px;
+      display: grid; place-items: center; padding: 0;
+      background: transparent; border: 0; color: #9bb5a9; cursor: pointer;
+      font: 700 15px/1 'DM Mono', monospace; pointer-events: auto; border-radius: 4px;
+    }
+    .hub-hint .hub-hint-close:hover { color: #10b981; }
+    .hub-hint .hub-hint-close:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+
+    /* =========================================
+       FEAT-006 (gap 3): CADENCIA DE CIERRE (sólo equilibrio_alcanzado)
+       Viñeta radial suave que oscurece apenas los bordes para un cierre sereno. El
+       pseudo-elemento va DETRÁS del contenido (z-index bajo, pointer-events none) y
+       nunca tapa el texto, la opción de reiniciar ni los créditos.
+       ========================================= */
+    #hub-container.ending-ambience::after {
+      content: ""; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(5,20,16,0) 42%, rgba(3,12,9,0.55) 100%);
+      opacity: 0; animation: endingSettle 2.4s ease forwards;
+    }
+    @keyframes endingSettle { from { opacity: 0; } to { opacity: 1; } }
 
     /* =========================================
        2. REFUGIO ZERO
@@ -485,6 +556,11 @@
       /* Sin cascada: el contenido aparece de golpe, sin desplazamiento, escala,
          desenfoque ni escalonado. */
       .cascade > * { animation: none; opacity: 1; transform: none; filter: none; }
+      /* FEAT-006: el aviso y la cadencia de cierre aparecen sin desplazamiento ni
+         animación; sólo el estado final sereno (viñeta estática, toast sin deslizar). */
+      .hub-hint { transition: opacity .12s linear; transform: translate(-50%, 0); }
+      .hub-hint.is-visible { transform: translate(-50%, 0); }
+      #hub-container.ending-ambience::after { animation: none; opacity: 1; }
     }
 
     /* =========================================
@@ -958,6 +1034,9 @@
          esmeralda SOLO detrás del hub. Decorativo: pointer-events:none y z-index
          bajo para que nunca capture clics/scroll y quede DETRÁS del contenido. -->
     <canvas id="hub-ambient-canvas" aria-hidden="true"></canvas>
+    <!-- FEAT-006 (gap 2): aviso de orientación mostrado una sola vez al entrar al hub.
+         No bloquea clics (pointer-events:none salvo el aspa); se autodescarta por timeout. -->
+    <div id="hub-hint" class="hub-hint" role="status" aria-live="polite"></div>
     <div class="narrative-area" id="narrative-area">
       <div id="contenido-escena"></div>
     </div>
@@ -973,6 +1052,8 @@
           <button type="button" class="progress-step" data-scene="mediacion_comunitaria" onclick="HubApp.renderEscena('mediacion_comunitaria')"><img src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=120&q=80" alt="">05 Custodia</button>
           <button type="button" class="progress-step" data-scene="equilibrio_alcanzado" onclick="HubApp.renderEscena('equilibrio_alcanzado')"><img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=120&q=80" alt="">06 Equilibrio</button>
         </nav>
+        <!-- FEAT-006 (gap 5): micro-indicador de progreso de ruta (N de 6). -->
+        <p id="progress-count" class="progress-count"></p>
       </div>
 
       <div class="enlaces-remotos">
@@ -1204,6 +1285,25 @@
         HubApp.forceStartAmbient();
         // SORPRESA (FEAT-005): arranca el lienzo ambiental del hub al entrar desde la intro.
         if (window.HubAmbient) { HubAmbient.start(); HubAmbient.intensify(); }
+        // FEAT-006 (gap 2): aviso de orientación, a lo sumo una vez por sesión, al
+        // llegar al hub desde la intro. Se autodescarta por timeout y no bloquea clics.
+        this.showFirstTimeHint();
+      },
+
+      hintShown: false,
+      showFirstTimeHint: function() {
+        if (this.hintShown) return;
+        this.hintShown = true;
+        const hint = document.getElementById('hub-hint');
+        if (!hint) return;
+        hint.innerHTML = 'Activa la Atmósfera Sonora y el Narrador en el panel. Tus decisiones cambian el desenlace.'
+          + '<button type="button" class="hub-hint-close" aria-label="Cerrar aviso">\u00d7</button>';
+        const dismiss = () => hint.classList.remove('is-visible');
+        const closeBtn = hint.querySelector('.hub-hint-close');
+        if (closeBtn) closeBtn.addEventListener('click', dismiss);
+        // Fundido de entrada tras un instante y autodescarte a los ~6s.
+        setTimeout(() => hint.classList.add('is-visible'), 450);
+        setTimeout(dismiss, 6500);
       }
     };
 
@@ -1560,6 +1660,10 @@
     // --- APP 1: HUB (PÁRAMO OMEGA) ---
     const HubApp = (function() {
       let inventario = [];
+      // FEAT-006 (gap 1 y 5): registro en memoria de escenas de ruta ya visitadas.
+      // Un Set diminuto; sin almacenamiento. Alimenta el estado .visited de los pasos
+      // y el contador "N de 6" de la barra lateral.
+      const visitadas = new Set();
       let ambientAudio = document.getElementById('audio-hub');
       let cotaAudio = document.getElementById('audio-cota');
       if(ambientAudio) ambientAudio.volume = 0.32;
@@ -1710,7 +1814,24 @@
           AppManager.playCascade(contenido);
           // SORPRESA (FEAT-005): breve realce del lienzo ambiental al cambiar de escena.
           if (window.HubAmbient) HubAmbient.intensify();
-          document.querySelectorAll('.hub-scope .progress-step').forEach(paso => paso.classList.toggle('active', paso.dataset.scene === id));
+          // FEAT-006 (gap 1): marca la escena actual como visitada ANTES de pintar los
+          // pasos, para que su estado .visited refleje el render en curso.
+          visitadas.add(id);
+          document.querySelectorAll('.hub-scope .progress-step').forEach(paso => {
+            paso.classList.toggle('active', paso.dataset.scene === id);
+            // FEAT-006 (gap 1): estado .visited distinto de .active (el .active sigue ganando).
+            paso.classList.toggle('visited', visitadas.has(paso.dataset.scene));
+          });
+          // FEAT-006 (gap 5): contador "N de 6" contando sólo los pasos de ruta visitados.
+          const pc = document.getElementById('progress-count');
+          if (pc) {
+            const visitadosRuta = document.querySelectorAll('.hub-scope .progress-step.visited').length;
+            pc.textContent = `${visitadosRuta} de 6 escenas`;
+          }
+          // FEAT-006 (gap 3): cadencia de cierre sólo en el desenlace; se retira en
+          // cualquier otra escena (incluido el reinicio a llegada_paramo).
+          const hubCont = document.getElementById('hub-container');
+          if (hubCont) hubCont.classList.toggle('ending-ambience', id === 'equilibrio_alcanzado');
           document.getElementById('multimedia-info').innerHTML = `<button class="sound-control mt-2" onclick="HubApp.escucharEscena()">▶ Leer Escena Actual</button>`;
           
           let textoLimpio = escena.texto.replace(/<[^>]*>?/gm, '');
