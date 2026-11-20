@@ -121,9 +121,11 @@
       .btn-intro-start { min-height: 44px; font-size: 18px; padding: 18px 40px; }
     }
     /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
-       fondo oscuro, sin recortar información. En horizontal/escritorio sigue en cover. */
+       El video es 16:9 (horizontal). En vertical, 'contain' lo encogía a una banda
+       central con enormes franjas vacías; por eso en portrait usamos 'cover' para que
+       llene la pantalla de forma inmersiva y los controles se lean encima. */
     @media (max-width: 850px) and (orientation: portrait) {
-      #intro-video-player { object-fit: contain; }
+      #intro-video-player { object-fit: cover; object-position: center; }
     }
     @media (max-width: 480px) {
       /* Pantallas estrechas (390/360px): texto sin desbordes horizontales. El padding
