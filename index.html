@@ -729,9 +729,12 @@
       transform: translate(-50%, calc(-50% + 10px));
       width: min(520px, 90vw); max-width: 90vw; box-sizing: border-box;
       padding: 18px 44px 18px 18px;
-      background: #04110c; color: #26d07c;
+      /* Fondo semitransparente con desenfoque: la consola "flota" sobre la lectura
+         dejando entrever el contenido detrás, más integrada y menos bloque opaco. */
+      background: rgba(4, 17, 12, 0.62); color: #26d07c;
+      -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
       border: 1px solid rgba(16, 185, 129, 0.55); border-radius: 6px;
-      box-shadow: 0 0 0 1px rgba(16,185,129,0.08) inset, 0 14px 40px rgba(0,0,0,0.6), 0 0 26px rgba(16,185,129,0.14);
+      box-shadow: 0 0 0 1px rgba(16,185,129,0.08) inset, 0 14px 40px rgba(0,0,0,0.5), 0 0 26px rgba(16,185,129,0.14);
       font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1.6; letter-spacing: .02em;
       text-shadow: 0 0 6px rgba(38, 208, 124, 0.45);
       overflow: hidden;
@@ -1944,6 +1947,10 @@
           if (dismissTo) { clearTimeout(dismissTo); dismissTo = null; }
           if (revealTo) { clearTimeout(revealTo); revealTo = null; }
           hint.classList.remove('is-visible');
+          // Ocultar de forma PERMANENTE tras el fundido de salida: así el aviso
+          // nunca reaparece al volver al hub desde un micrositio (las transiciones
+          // /cascada no pueden revivirlo porque queda fuera de renderizado).
+          setTimeout(() => { hint.style.display = 'none'; }, 600);
         };
         if (closeBtn) closeBtn.addEventListener('click', dismiss);
 
