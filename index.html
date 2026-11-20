@@ -84,26 +84,30 @@
     .btn-intro-start:hover { background: #10b981; color: #051410; box-shadow: 0 0 50px rgba(16, 185, 129, 0.9); transform: scale(1.04); }
     .intro-start-hint { color: #9bb5a9; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
 
-    /* Créditos de elaboración en la pantalla de inicio: discretos, legibles sobre el
-       fondo radial oscuro, centrados y con buen interlineado. Secundarios al botón. */
-    .intro-credits {
-      max-width: min(92vw, 560px);
-      margin: 6px auto 0; padding: 14px 18px;
+    /* Créditos de cierre de la experiencia: aparecen SÓLO al alcanzar la escena
+       final del hub (equilibrio_alcanzado), bajo la narrativa y la opción de
+       reiniciar, como un rollo de créditos elegante dentro de la columna esmeralda. */
+    .end-credits {
+      margin: 42px auto 8px; padding: 30px clamp(20px, 5vw, 38px);
       text-align: center; color: #cfe3da;
-      font-family: 'DM Mono', monospace; line-height: 1.5;
-      background: rgba(5, 20, 16, 0.42); border: 1px solid rgba(16, 185, 129, 0.18);
-      border-radius: 8px; backdrop-filter: blur(4px);
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+      font-family: 'DM Mono', monospace; line-height: 1.65;
+      background: rgba(5, 20, 16, 0.55); border: 1px solid rgba(16, 185, 129, 0.22);
+      border-radius: 12px; backdrop-filter: blur(5px);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
     }
-    .intro-credits p { margin: 2px 0; font-size: 12.5px; }
-    .intro-credits-kicker {
-      color: #10b981; letter-spacing: 3px; text-transform: uppercase;
-      font-size: 11px !important; margin: 0 0 6px !important; opacity: 0.9;
+    .end-credits::before {
+      content: ""; display: block; width: 64px; height: 2px; margin: 0 auto 18px;
+      background: linear-gradient(90deg, transparent, rgba(16,185,129,0.8), transparent);
     }
-    .intro-credits-label { color: #9bb5a9; }
-    .intro-credits-small { font-size: 11px !important; color: #a9c3b8; opacity: 0.92; }
-    .intro-credits-link { color: #f4e7bd; text-decoration: none; border-bottom: 1px dotted rgba(244,231,189,0.5); }
-    .intro-credits-link:hover { color: #10b981; border-bottom-color: #10b981; }
+    .end-credits p { margin: 4px 0; font-size: 13.5px; }
+    .end-credits-kicker {
+      color: #10b981; letter-spacing: 4px; text-transform: uppercase;
+      font-size: 12px !important; margin: 0 0 16px !important; opacity: 0.92;
+    }
+    .end-credits-label { color: #9bb5a9; }
+    .end-credits-small { font-size: 12px !important; color: #a9c3b8; opacity: 0.92; margin-top: 10px; }
+    .end-credits-link { color: #f4e7bd; text-decoration: none; border-bottom: 1px dotted rgba(244,231,189,0.5); }
+    .end-credits-link:hover { color: #10b981; border-bottom-color: #10b981; }
 
     /* Estado de carga tras pulsar Iniciar: el botón pasa a "Cargando…" mientras el
        video almacena en búfer, para que la pulsación nunca se sienta congelada. */
@@ -145,16 +149,15 @@
       #intro-start-screen {
         gap: 18px;
         padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
-        /* En portrait corto, el contenido (botón + créditos) puede exceder el alto:
-           permitimos scroll interno para que Iniciar siga siendo alcanzable. */
-        justify-content: flex-start; overflow-y: auto;
+        /* Centrado del botón + ayuda; se permite scroll interno por seguridad en
+           portrait corto para que Iniciar siga siendo alcanzable. */
+        justify-content: center; overflow-y: auto;
       }
       .btn-intro-start { min-height: 44px; font-size: 18px; padding: 18px 40px; }
-      #intro-start-screen .btn-intro-start { margin-top: auto; }
-      #intro-start-screen .intro-credits { margin-bottom: auto; }
-      .intro-credits { padding: 12px 14px; }
-      .intro-credits p { font-size: 11.5px; }
-      .intro-credits-small { font-size: 10.5px !important; }
+      /* Créditos de cierre más compactos dentro de la columna del hub en móvil. */
+      .end-credits { margin-top: 34px; padding: 24px 18px; }
+      .end-credits p { font-size: 12.5px; }
+      .end-credits-small { font-size: 11px !important; }
     }
     /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
        El video es 16:9 (horizontal). En vertical, 'contain' lo encogía a una banda
@@ -922,17 +925,6 @@
         <i class="ph ph-play" id="btn-start-intro-icon"></i> <span id="btn-start-intro-label">Iniciar</span>
       </button>
       <p class="intro-start-hint" id="intro-start-hint">Pulsa Iniciar para comenzar la experiencia</p>
-
-      <!-- CRÉDITOS DE ELABORACIÓN: pequeños y discretos, bajo el botón Iniciar -->
-      <div class="intro-credits" aria-label="Créditos">
-        <p class="intro-credits-kicker">Créditos</p>
-        <p><span class="intro-credits-label">Historia:</span> Andronak Zagreirus</p>
-        <p><span class="intro-credits-label">Instagram:</span> <a class="intro-credits-link" href="https://instagram.com/zagreirus" target="_blank" rel="noopener noreferrer">zagreirus</a></p>
-        <p>Bogotá, Colombia</p>
-        <p class="intro-credits-small">Material optimizado con IA: Gemini, Flow video, Flow Music app, Google vids, GitHub, Copilot, Kiro agents</p>
-        <p class="intro-credits-small">Realizado en el marco del seminario de Educación en Tecnología, dirigido por el profesor Zergio Fajardo.</p>
-        <p class="intro-credits-small">Universidad Distrital Francisco José de Caldas</p>
-      </div>
     </div>
 
     <!-- Controles visibles una vez iniciado el video -->
@@ -1685,8 +1677,25 @@
           });
           htmlOpc += `</div>`;
 
+          // CRÉDITOS DE CIERRE: sólo en la escena final del hub (equilibrio_alcanzado),
+          // tras la narrativa y la opción de reiniciar. Como renderEscena reconstruye
+          // innerHTML en cada render, el bloque aparece únicamente aquí y desaparece al
+          // navegar a cualquier otra escena (p. ej. al reiniciar a llegada_paramo).
+          let htmlCreditos = '';
+          if (id === 'equilibrio_alcanzado') {
+            htmlCreditos = `<div class="end-credits" aria-label="Créditos">`
+              + `<p class="end-credits-kicker">Fin de la experiencia · Créditos</p>`
+              + `<p><span class="end-credits-label">Historia:</span> Andronak Zagreirus</p>`
+              + `<p><span class="end-credits-label">Instagram:</span> <a class="end-credits-link" href="https://instagram.com/zagreirus" target="_blank" rel="noopener noreferrer">zagreirus</a></p>`
+              + `<p>Bogotá, Colombia · 2025</p>`
+              + `<p class="end-credits-small">Material optimizado con IA: Gemini, Flow video, Flow Music app, Google vids, GitHub, Copilot, Kiro agents</p>`
+              + `<p class="end-credits-small">Realizado en el marco del seminario de Educación en Tecnología, dirigido por el profesor Zergio Fajardo.</p>`
+              + `<p class="end-credits-small">Universidad Distrital Francisco José de Caldas</p>`
+              + `</div>`;
+          }
+
           const contenido = document.getElementById('contenido-escena');
-          contenido.innerHTML = html + htmlOpc;
+          contenido.innerHTML = html + htmlOpc + htmlCreditos;
           // SFX de interacción en las opciones recién generadas (sobrevive al rebuild del innerHTML).
           document.querySelectorAll('#contenido-escena .opciones button').forEach(btn => {
             btn.addEventListener('mouseenter', () => SfxEngine.hover());
