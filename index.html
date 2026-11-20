@@ -47,6 +47,7 @@
       --muted-soft: #9bb5a9;   /* atenuado */
       --accent: #10b981;       /* esmeralda: acento primario */
       --accent-soft: rgba(16,185,129,.16);
+      --accent-strong: #34d399;/* esmeralda intensa: realce de contenido ACTIVO */
       --sand: #f4e7bd;         /* arena: acento ocasional (créditos/intro) */
       --hair: rgba(231,239,233,.10);
       --hair-strong: rgba(231,239,233,.16);
@@ -119,6 +120,18 @@
     .end-credits::before {
       content: ""; display: block; width: 64px; height: 2px; margin: 0 auto 18px;
       background: linear-gradient(90deg, transparent, rgba(16,185,129,0.8), transparent);
+    }
+    /* ENTRADA BESPOKE DE CRÉDITOS (FEAT-001): fundido + leve ascenso + desenfoque
+       que se "decodifica"/asienta, distinto de la cascada genérica. El bloque se
+       inyecta SÓLO en equilibrio_alcanzado; la clase .end-credits-enter se añade en
+       el render para disparar esta entrada una sola vez. */
+    .end-credits.end-credits-enter {
+      animation: endCreditsReveal 1.5s var(--ease, cubic-bezier(.22,.61,.36,1)) both;
+    }
+    @keyframes endCreditsReveal {
+      0%   { opacity: 0; transform: translateY(20px); filter: blur(7px); letter-spacing: .14em; }
+      55%  { opacity: 1; filter: blur(1.5px); letter-spacing: .04em; }
+      100% { opacity: 1; transform: translateY(0); filter: blur(0); letter-spacing: normal; }
     }
     .end-credits p { margin: 4px 0; font-size: 13.5px; }
     .end-credits-kicker {
@@ -511,6 +524,7 @@
       --muted: #93a79f;            /* texto atenuado (etiquetas/HUD) */
       --accent: #10b981;           /* ESMERALDA: acento primario dominante */
       --accent-soft: rgba(16,185,129,.16);
+      --accent-strong: #34d399;    /* ESMERALDA intensa: realce de contenido ACTIVO */
       --cyan: #81d9d0;             /* secundario, uso ESCASO (p.ej. feedback) */
       --coral: #f4a38f;            /* acento OCASIONAL (tick/realce puntual) */
       --sand: #f4e7bd;            /* SOLO para el título display (H1) */
@@ -605,10 +619,28 @@
     .hub-scope .visual-stage::after { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
     .hub-scope .visual-stage:hover { border-color: rgba(16,185,129,.45); }
     .hub-scope .stage-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .62; transition: transform .8s var(--ease); }
-    .hub-scope .visual-stage:hover .stage-image { transform: scale(1.03); }
+    /* DERIVA FLOTANTE: la imagen hero "flota en la inmensidad del paisaje". Deriva
+       muy lenta (32s) y de amplitud mínima (unos px + escala 1->1.025), sólo
+       transform, dentro de .visual-stage (overflow:hidden) -> sin reflow/layout
+       shift. Vive en estado idle; el :hover de abajo sigue leyéndose (sobrescribe
+       el transform mientras se pasa el cursor y vuelve a la deriva al salir). */
+    .hub-scope .stage-image { animation: stageDrift 32s ease-in-out infinite alternate; }
+    @keyframes stageDrift {
+      0%   { transform: translate3d(-4px, 2px, 0) scale(1.01); }
+      50%  { transform: translate3d(3px, -3px, 0) scale(1.025); }
+      100% { transform: translate3d(5px, 3px, 0) scale(1.015); }
+    }
+    .hub-scope .visual-stage:hover .stage-image { animation: none; transform: scale(1.03); }
     
     /* Título de escena: Manrope (antes Bricolage) dentro de la jerarquía sans. */
     .hub-scope .scene-title { margin: 0 0 var(--space-3); color: var(--text-main); font: 800 var(--fs-h2)/var(--lh-tight) 'Manrope', sans-serif; letter-spacing: -.01em; }
+    /* Subrayado esmeralda intenso bajo el título de la escena ACTIVA: ancla la
+       atención en el contenido vigente. Filete corto y estático (sin movimiento). */
+    .hub-scope .scene-title::after {
+      content: ''; display: block; width: 46px; height: 2px; margin-top: var(--space-2);
+      background: linear-gradient(90deg, var(--accent-strong), transparent);
+      box-shadow: 0 0 8px rgba(52,211,153,.35);
+    }
     /* NARRACIÓN: de tarjeta con borde + insignia a un filete lateral quieto + tinte sutil. */
     .hub-scope .scene-copy { position: relative; max-width: 100%; padding: var(--space-3) var(--space-4); background: linear-gradient(90deg, var(--panel-tint), transparent 70%); border-left: 1px solid var(--hair-accent); border-radius: 0; }
     .hub-scope .scene-copy::before { content: 'NARRACIÓN'; display: block; margin: 0 0 var(--space-2); padding: 0; background: none; color: var(--accent); font: 500 var(--fs-micro) 'DM Mono', monospace; letter-spacing: var(--tracking-wide); text-transform: uppercase; opacity: .72; }
@@ -621,7 +653,10 @@
     .hub-scope .opciones button { background: rgba(8,22,18,.72); color: var(--text-main); border: 1px solid var(--hair-strong); padding: 18px 22px 18px 56px; border-radius: 4px 12px 4px 12px; font-family: 'Manrope', sans-serif; font-size: .95rem; cursor: pointer; text-align: left; transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); position: relative; width:100%; }
     .hub-scope .opciones button > span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 24px; height: 24px; color: var(--ink); background: var(--accent); border-radius: 50%; font: 500 .7rem 'DM Mono', monospace; }
     /* Hover esmeralda (antes coral): borde + fondo + leve avance, sin glow coral. */
-    .hub-scope .opciones button:hover { border-color: var(--accent); background: rgba(16,42,34,.82); transform: translateX(5px); box-shadow: inset 2px 0 0 var(--accent); }
+    /* Hover: realce esmeralda MÁS intenso sobre la opción activa para fijar el foco
+       del usuario en el contenido con el que interactúa (borde + filete + glow
+       esmeralda fuerte). Color/box-shadow estáticos: sin preocupación de movimiento. */
+    .hub-scope .opciones button:hover { border-color: var(--accent-strong); background: rgba(16,42,34,.82); transform: translateX(5px); box-shadow: inset 3px 0 0 var(--accent-strong), 0 0 18px rgba(52,211,153,.28); }
     .hub-scope .opciones button:active { transform: translateX(2px); }
     /* Anillo de foco esmeralda nítido (antes coral). */
     .hub-scope .opciones button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -637,12 +672,16 @@
     .hub-scope .progress-step { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; color: #9bb5a9; font-size: .8rem; text-align: left; background: transparent; border: 0; padding: 6px 0; cursor: pointer; opacity: .6; font-weight: 600; }
     .hub-scope .progress-step img { width: 24px; height: 24px; object-fit: cover; border-radius: 50%; }
     .hub-scope .progress-step.active, .hub-scope .progress-step:hover { opacity: 1; color: var(--accent); }
+    /* Paso de ruta ACTIVO: esmeralda intensa + filete esmeralda bajo la miniatura
+       para marcar con nitidez "estás aquí" sin ganarle en peso al resto del HUD. */
+    .hub-scope .progress-step.active { color: var(--accent-strong); }
+    .hub-scope .progress-step.active img { box-shadow: 0 0 0 2px var(--accent-strong), 0 0 10px rgba(52,211,153,.4); }
     /* FEAT-006 (gap 1): estado VISITADO de los pasos de ruta. Más presente que un
        paso sin visitar pero sin ganarle al .active (que mantiene opacidad plena +
        color de acento). Un anillo cian tenue en la miniatura marca "ya recorrido". */
     .hub-scope .progress-step.visited { opacity: .85; color: #cfe3da; }
     .hub-scope .progress-step.visited img { box-shadow: 0 0 0 2px rgba(129,217,208,.6); }
-    .hub-scope .progress-step.active.visited { opacity: 1; color: var(--accent); }
+    .hub-scope .progress-step.active.visited { opacity: 1; color: var(--accent-strong); }
     .hub-scope .progress-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     /* FEAT-006 (gap 5): micro-indicador "N de 6" bajo la ruta; estética de .side-kicker. */
     .hub-scope .progress-count { color: var(--muted); font: 500 var(--fs-micro) 'DM Mono', monospace; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: var(--space-2) 0 0; opacity: .9; }
@@ -698,20 +737,42 @@
       overflow: hidden;
       opacity: 0; pointer-events: none; transition: opacity .5s ease, transform .5s ease;
     }
-    /* Scanline sutil tipo CRT por encima del texto (decorativo, sin capturar clics). */
+    /* Scanline tipo CRT por encima del texto (decorativo, sin capturar clics).
+       Rayas algo más marcadas (stripe cada 3px, opacidad .22) para un tubo más
+       "chunky" de los 80, sin romper la legibilidad. */
     .hub-hint::before {
       content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-      background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(0,0,0,0.16) 3px, rgba(0,0,0,0) 4px);
-      opacity: .35; animation: hubHintScan 6s linear infinite;
+      background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 1px, rgba(0,0,0,0.22) 2px, rgba(0,0,0,0) 3px);
+      opacity: .4; animation: hubHintScan 6s linear infinite;
     }
     .hub-hint.is-visible { opacity: 1; transform: translate(-50%, -50%); }
+    /* Flicker de fósforo lento y de baja amplitud sobre el texto (prompt+texto+cursor),
+       para que la consola "respire" como un tubo real. No afecta geometría. */
+    .hub-hint.is-visible .hub-hint-prompt,
+    .hub-hint.is-visible .hub-hint-text,
+    .hub-hint.is-visible .hub-hint-cursor { animation: hubHintPhosphor 3.4s ease-in-out infinite; }
+    /* Destello breve de encendido de CRT al aparecer el panel (one-shot): un pop de
+       brillo + leve scaleY que se asienta. */
+    .hub-hint.is-visible { animation: hubHintPowerOn .55s var(--ease, cubic-bezier(.22,.61,.36,1)) both; }
     .hub-hint .hub-hint-prompt { color: #10b981; margin-right: 6px; }
+    .hub-hint .hub-hint-text { color: #26d07c; }
     .hub-hint .hub-hint-cursor {
       display: inline-block; width: 8px; margin-left: 2px; color: #26d07c;
       animation: hubHintBlink 1s steps(1) infinite;
     }
     @keyframes hubHintBlink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
     @keyframes hubHintScan { from { background-position: 0 0; } to { background-position: 0 100px; } }
+    @keyframes hubHintPhosphor {
+      0%, 100% { opacity: 1; filter: brightness(1); }
+      47%      { opacity: .94; filter: brightness(1.06); }
+      52%      { opacity: .98; filter: brightness(.97); }
+    }
+    @keyframes hubHintPowerOn {
+      0%   { filter: brightness(2.4); transform: translate(-50%, -50%) scaleY(.82); }
+      22%  { filter: brightness(1.5); transform: translate(-50%, -50%) scaleY(1.03); }
+      55%  { filter: brightness(1.12); transform: translate(-50%, -50%) scaleY(.995); }
+      100% { filter: brightness(1); transform: translate(-50%, -50%) scaleY(1); }
+    }
     .hub-hint .hub-hint-close {
       position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; z-index: 3;
       display: grid; place-items: center; padding: 0;
@@ -871,19 +932,36 @@
     }
     /* Barrido con el mismo easing que cascada/app-enter + una leve deriva lateral
        para que el velo se sienta cohesionado y "premium" (<=.55s). */
-    #layer-veil.veil-on::after { animation: veil-sweep .52s cubic-bezier(.22,.61,.36,1) forwards; }
+    #layer-veil.veil-on::after { animation: veil-sweep .52s var(--ease, cubic-bezier(.22,.61,.36,1)) forwards; }
     @keyframes veil-sweep {
       0%   { top: -30%; opacity: 0; transform: translateX(-2%); }
-      15%  { opacity: 1; }
+      14%  { opacity: 1; }
       100% { top: 110%; opacity: 0; transform: translateX(2%); }
+    }
+    /* Borde/luz esmeralda que acompaña al barrido para un corte más "premium" y
+       direccional. Capa aparte (segundo pseudo no disponible): tinte en el gradiente. */
+    #layer-veil::before {
+      content: ''; position: absolute; left: -10%; right: -10%; height: 2px;
+      top: -30%; opacity: 0;
+      background: linear-gradient(90deg, transparent, rgba(16,185,129,.55) 45%, rgba(52,211,153,.9) 50%, rgba(16,185,129,.55) 55%, transparent);
+      box-shadow: 0 0 14px rgba(16,185,129,.5); mix-blend-mode: screen;
+    }
+    #layer-veil.veil-on::before { animation: veil-edge .52s var(--ease, cubic-bezier(.22,.61,.36,1)) forwards; }
+    @keyframes veil-edge {
+      0%   { top: -30%; opacity: 0; }
+      18%  { opacity: 1; }
+      100% { top: 112%; opacity: 0; }
     }
     /* Entrada del contenedor: leve escala + desenfoque + un pequeño ascenso
        direccional (translateY) que asienta el panel hacia arriba, igual que la
        dirección de la cascada; mismo easing que velo/cascada (<=.45s). */
-    .app-container.app-enter { animation: app-enter-fx .44s cubic-bezier(.22,.61,.36,1); }
+    .app-container.app-enter { animation: app-enter-fx .44s var(--ease, cubic-bezier(.22,.61,.36,1)); }
+    /* Cross-dissolve más nítido: entra con un leve deslizamiento direccional +
+       zoom que resuelve el desenfoque de golpe cerca del final (lectura crujiente). */
     @keyframes app-enter-fx {
-      0%   { transform: translateY(14px) scale(.985); filter: blur(5px) brightness(1.08); }
-      100% { transform: translateY(0) scale(1); filter: blur(0) brightness(1); }
+      0%   { opacity: .55; transform: translateY(16px) scale(.978); filter: blur(6px) brightness(1.1); }
+      60%  { opacity: 1; filter: blur(1px) brightness(1.03); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0) brightness(1); }
     }
     /* Intro->hub: mismo lenguaje, un pelín más de glow al abrir el hub. */
     #intro-video-overlay.fade-out #intro-video-player { animation: intro-dissolve .8s ease forwards; }
@@ -903,7 +981,7 @@
           junto al .app-enter existente.
        ========================================= */
     .cascade > * {
-      animation: cascade-rise .42s cubic-bezier(.22,.61,.36,1) both;
+      animation: cascade-rise .42s var(--ease, cubic-bezier(.22,.61,.36,1)) both;
       will-change: transform, opacity;
     }
     /* Entrada más perceptible y "tipo SO": ascenso mayor (22px) + leve escala
@@ -926,6 +1004,7 @@
     @media (prefers-reduced-motion: reduce) {
       #layer-veil { transition: opacity .12s linear; }
       #layer-veil.veil-on::after { animation: none; opacity: 0; }
+      #layer-veil.veil-on::before { animation: none; opacity: 0; }
       .app-container.app-enter { animation: none; }
       #intro-video-overlay.fade-out #intro-video-player { animation: none; }
       /* Sin cascada: el contenido aparece de golpe, sin desplazamiento, escala,
@@ -935,13 +1014,19 @@
          animación. La consola añeja se muestra como texto estático centrado: sin
          desplazamiento de entrada, sin cursor parpadeante, sin movimiento de scanline. */
       .hub-hint { transition: opacity .12s linear; transform: translate(-50%, -50%); }
-      .hub-hint.is-visible { transform: translate(-50%, -50%); }
+      .hub-hint.is-visible { transform: translate(-50%, -50%); animation: none; filter: none; }
       .hub-hint::before { animation: none; }
       .hub-hint .hub-hint-cursor { animation: none; opacity: 1; }
+      /* Sin flicker de fósforo ni destello de encendido: consola estática. */
+      .hub-hint.is-visible .hub-hint-prompt,
+      .hub-hint.is-visible .hub-hint-text,
+      .hub-hint.is-visible .hub-hint-cursor { animation: none; filter: none; opacity: 1; }
       /* El cajón lateral móvil se repliega/despliega sin deslizamiento animado. */
       #hub-container .sidebar { transition: none; }
       #hub-container .hub-drawer-scrim { transition: none; }
       #hub-container.ending-ambience::after { animation: none; opacity: 1; }
+      /* Créditos sin entrada bespoke: aparecen al instante. */
+      .end-credits.end-credits-enter { animation: none; opacity: 1; transform: none; filter: none; letter-spacing: normal; }
       /* FEAT-001: los motivos "futuro cercano" (corchetes de .visual-stage y la
          micro-etiqueta HUD de la cabecera) son estáticos por diseño; aquí sólo
          neutralizamos las transiciones de hover/escala añadidas para que nada se
@@ -949,6 +1034,8 @@
       .hub-scope .visual-stage,
       .hub-scope .opciones button,
       .hub-scope .btn-enlace { transition: none; }
+      /* Sin deriva flotante: la imagen hero queda quieta. */
+      .hub-scope .stage-image { animation: none; transform: none; }
       .hub-scope .visual-stage:hover .stage-image { transform: none; }
     }
 
@@ -1832,20 +1919,65 @@
         this.hintShown = true;
         const hint = document.getElementById('hub-hint');
         if (!hint) return;
-        // Mensaje estilo arranque de consola añeja: prompt '>', texto fósforo y
-        // cursor parpadeante (el parpadeo/scanline se desactivan bajo reduced-motion
-        // vía CSS). El aspa es el único elemento que captura toques.
+        // Mensaje estilo arranque de consola añeja de los 80: prompt '>', texto
+        // fósforo que se TECLEA carácter a carácter con el cursor de bloque
+        // parpadeante arrastrando tras el texto, y el aspa presente desde el
+        // inicio. El parpadeo/scanline/flicker se desactivan bajo reduced-motion
+        // vía CSS. El aspa es el único elemento que captura toques.
+        const fullText = 'SISTEMA P\u00c1RAMO-OMEGA :: activa atm\u00f3sfera y narrador \u00b7 tus decisiones alteran el desenlace_';
+        // Estructura: prompt + span de texto (se llena al teclear) + cursor + aspa.
         hint.innerHTML =
           '<span class="hub-hint-prompt">&gt;</span>'
-          + 'SISTEMA P\u00c1RAMO-OMEGA :: activa atm\u00f3sfera y narrador \u00b7 tus decisiones alteran el desenlace_'
+          + '<span class="hub-hint-text"></span>'
           + '<span class="hub-hint-cursor" aria-hidden="true">\u2588</span>'
           + '<button type="button" class="hub-hint-close" aria-label="Cerrar aviso">\u00d7</button>';
-        const dismiss = () => hint.classList.remove('is-visible');
+        const textEl = hint.querySelector('.hub-hint-text');
         const closeBtn = hint.querySelector('.hub-hint-close');
+
+        // Temporizadores pendientes: se limpian TODOS al descartar para que el aspa
+        // interrumpa de inmediato el tecleo y el autodescarte.
+        let typeInt = null;
+        let dismissTo = null;
+        let revealTo = null;
+        const dismiss = () => {
+          if (typeInt) { clearInterval(typeInt); typeInt = null; }
+          if (dismissTo) { clearTimeout(dismissTo); dismissTo = null; }
+          if (revealTo) { clearTimeout(revealTo); revealTo = null; }
+          hint.classList.remove('is-visible');
+        };
         if (closeBtn) closeBtn.addEventListener('click', dismiss);
-        // Fundido de entrada tras un instante y autodescarte a los ~6.5s.
-        setTimeout(() => hint.classList.add('is-visible'), 450);
-        setTimeout(dismiss, 6500);
+
+        const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (reduced) {
+          // MOVIMIENTO REDUCIDO: texto completo al instante (sin tecleo ni sonido),
+          // fundido de entrada y autodescarte algo más corto.
+          if (textEl) textEl.textContent = fullText;
+          revealTo = setTimeout(() => hint.classList.add('is-visible'), 450);
+          dismissTo = setTimeout(dismiss, 7000);
+          return;
+        }
+
+        // Fundido de entrada tras un instante; el tecleo arranca con el panel ya
+        // visible para que el efecto de consola se perciba.
+        revealTo = setTimeout(() => {
+          hint.classList.add('is-visible');
+          let i = 0;
+          const SPEED = 42; // ms por carácter -> ~N ms de tecleo total.
+          typeInt = setInterval(() => {
+            if (i >= fullText.length) {
+              clearInterval(typeInt); typeInt = null;
+              // Autodescarte ~9.5s DESPUÉS de terminar de teclear (no solapado).
+              dismissTo = setTimeout(dismiss, 9500);
+              return;
+            }
+            if (textEl) textEl.textContent += fullText.charAt(i);
+            i++;
+            // Bit sonoro de tecleo MUY sutil, sólo si el audio ya está desbloqueado
+            // (nunca se fuerza unlock) y de forma intermitente para no saturar.
+            if (SfxEngine.ready && (i % 2 === 0)) SfxEngine.tick();
+          }, SPEED);
+        }, 450);
       }
     };
 
@@ -2089,7 +2221,7 @@
     // SfxEngine.ready (no fuerza unlock). start() limpia cualquier temporizador previo
     // y stop() es idempotente, de modo que los temporizadores nunca se apilan.
     const DecisionPacer = {
-      DURATION: 7000,        // ~7s por ciclo
+      DURATION: 13000,       // ~13s por ciclo (ritmo pausado, no punitivo)
       _bar: null,
       _tickInt: null,
       _endTo: null,
@@ -2119,11 +2251,12 @@
         barEl.style.transition = 'transform ' + (this.DURATION / 1000) + 's linear';
         barEl.style.transform = 'scaleX(1)';
 
-        // "Bit sonoro" gentil: una vez por segundo, SOLO durante el primer ciclo, y
-        // sólo si el audio ya está desbloqueado (no forzamos unlock).
+        // "Bit sonoro" gentil: ~cada 1.7s, SOLO durante el primer ciclo, y sólo si
+        // el audio ya está desbloqueado (no forzamos unlock). Cadencia adaptada al
+        // ciclo más largo para que el tick no quede demasiado disperso.
         this._tickInt = setInterval(() => {
           if (SfxEngine.ready) SfxEngine.tick();
-        }, 1000);
+        }, 1700);
 
         // Al cerrar el primer ciclo: detener el ticking audible y pasar al latido
         // visual. NO altera las opciones de ninguna forma.
@@ -2571,7 +2704,7 @@
           // navegar a cualquier otra escena (p. ej. al reiniciar a llegada_paramo).
           let htmlCreditos = '';
           if (id === 'equilibrio_alcanzado') {
-            htmlCreditos = `<div class="end-credits" aria-label="Créditos">`
+            htmlCreditos = `<div class="end-credits end-credits-enter" aria-label="Créditos">`
               + `<p class="end-credits-kicker">Fin de la experiencia · Créditos</p>`
               + `<p><span class="end-credits-label">Historia:</span> Andronak Zagreirus</p>`
               + `<p><span class="end-credits-label">Instagram:</span> <a class="end-credits-link" href="https://instagram.com/zagreirus" target="_blank" rel="noopener noreferrer">zagreirus</a></p>`
