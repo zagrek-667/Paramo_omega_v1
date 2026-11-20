@@ -178,6 +178,13 @@
       /* Padding cómodo (no borde a borde). El colchón inferior deja libre la barra de controles fija que en móvil pasa a ser una franja a lo ancho del borde inferior (ver .global-controls-container más abajo). */
       .hub-scope .narrative-area { width: 100%; min-height: auto; padding: clamp(22px, 5vw, 30px) clamp(18px, 5vw, 28px) calc(72px + env(safe-area-inset-bottom, 0px)); }
       .hub-scope #contenido-escena { max-width: 720px; }
+      /* FEAT-002: en móvil la señal de ritmo acompaña a las opciones a lo ancho de la
+         columna con scroll (sin tope de 760px), nunca fija ni solapando la barra
+         inferior / el cajón / el hint. Se prefija con scope para ganar la cascada. */
+      .hub-scope #contenido-escena .decision-timer,
+      .refugio-scope .decision-timer,
+      .lyra-scope .decision-timer,
+      .cronos-scope .decision-timer { max-width: 100%; position: static; }
       .hub-scope .story-header { padding: 24px 0 22px; }
       .hub-scope .story-header h1 { font-size: clamp(2.2rem, 9vw, 2.9rem); }
       /* En móvil el botón "Ingresar al Hub" se centra en una franja inferior,
@@ -911,6 +918,55 @@
     }
 
     /* =========================================
+       FEAT-002: SEÑAL DE RITMO DE DECISIÓN + ESTADO DE TERMINALES RESUELTAS
+       Mismo lenguaje visual/sonoro: barra fina en la familia esmeralda/CRT, DM Mono y
+       los acentos existentes. NO PUNITIVA: al completar sólo late (.is-pulsing), nunca
+       deshabilita ni oculta opciones. Vive dentro del flujo con scroll de las opciones.
+       ========================================= */
+    .decision-timer {
+      height: 3px; width: 100%; max-width: 760px; margin: 14px 0 4px;
+      background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden;
+      /* Acento por contexto; cada scope lo redefine abajo. */
+      --dt-accent: #10b981;
+    }
+    .decision-timer-bar {
+      display: block; height: 100%; width: 100%;
+      transform: scaleX(0); transform-origin: left center;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--dt-accent) 55%, transparent), var(--dt-accent));
+      box-shadow: 0 0 8px color-mix(in srgb, var(--dt-accent) 45%, transparent);
+      will-change: transform;
+    }
+    /* Estado de latido tras el primer ciclo: pulso suave, sólo visual. */
+    .decision-timer.is-pulsing { animation: dt-pulse 2.2s ease-in-out infinite; }
+    @keyframes dt-pulse {
+      0%, 100% { opacity: .5; box-shadow: none; }
+      50%      { opacity: 1; box-shadow: 0 0 10px color-mix(in srgb, var(--dt-accent) 40%, transparent); }
+    }
+    /* Acento por contexto: hub esmeralda; cada terminal reutiliza su fósforo/acento. */
+    .hub-scope .decision-timer { --dt-accent: var(--accent, #10b981); }
+    .refugio-scope .decision-timer { --dt-accent: #d4a373; }
+    .lyra-scope .decision-timer    { --dt-accent: #4af626; }
+    .cronos-scope .decision-timer  { --dt-accent: var(--term-phosphor, #e2e8f0); }
+
+    /* Palomita de terminal resuelta + invitación, con los vars existentes. */
+    .hub-scope .enlaces-invite {
+      color: var(--muted); font: 500 .66rem 'DM Mono', monospace;
+      letter-spacing: .04em; line-height: 1.5; margin: 0 0 14px;
+    }
+    .hub-scope .btn-enlace.resuelta { border-color: var(--accent); color: var(--cyan); }
+    .hub-scope .btn-enlace.resuelta i { color: var(--cyan); }
+    .hub-scope .enlace-check {
+      margin-left: auto; color: var(--accent); font-weight: 700; font-size: .9rem; line-height: 1;
+    }
+
+    /* MOVIMIENTO REDUCIDO: la barra no se anima; afordancia estática (llena y neutra),
+       sin latido. El controlador JS ya evita el ticking bajo esta preferencia. */
+    @media (prefers-reduced-motion: reduce) {
+      .decision-timer-bar { transition: none !important; transform: scaleX(1) !important; }
+      .decision-timer.is-pulsing { animation: none; opacity: .7; }
+    }
+
+    /* =========================================
        TÍTULOS DE MICROSITIOS: "droop" futurista ligero
        Tratamiento SUTIL y aditivo solo para los títulos de las tres terminales
        (clase .micro-title). Mantiene el color/tamaño existente de cada título y
@@ -1359,13 +1415,15 @@
 
       <div class="enlaces-remotos">
         <p class="side-kicker" style="color:var(--accent);">Terminales Remotas</p>
-        <button class="btn-enlace" onclick="AppManager.launchApp('refugio')">
+        <!-- FEAT-002: invitación breve a resolver las narrativas de las terminales. -->
+        <p class="enlaces-invite">Explora y resuelve las tres terminales remotas.</p>
+        <button class="btn-enlace" data-terminal="refugio" onclick="AppManager.launchApp('refugio')">
           <i class="ph ph-hexagon"></i> Refugio Zero
         </button>
-        <button class="btn-enlace" onclick="AppManager.launchApp('lyra')">
+        <button class="btn-enlace" data-terminal="lyra" onclick="AppManager.launchApp('lyra')">
           <i class="ph ph-broadcast"></i> Archivo Lyra
         </button>
-        <button class="btn-enlace" onclick="AppManager.launchApp('cronos')">
+        <button class="btn-enlace" data-terminal="cronos" onclick="AppManager.launchApp('cronos')">
           <i class="ph ph-terminal-window"></i> Cronos-Axioma
         </button>
       </div>
@@ -1770,6 +1828,23 @@
         this._ensure();
         this._blip(520, 0.07, 0.26, 'triangle');
         this._blip(780, 0.09, 0.22, 'triangle');
+      },
+      // FEAT-002 (pacing): "bit sonoro" MUY sutil para la señal de decisión. Reutiliza
+      // _blip/_ensure, así que hereda el gating de unlock+master.gain y NUNCA suena
+      // antes del primer gesto del usuario (_blip es no-op mientras !this.ready).
+      // Ganancia deliberadamente baja (<= ~0.10) para que quede como un pulso de fondo
+      // de la misma familia tonal esmeralda/CRT, no como un aviso. NO reutiliza select()
+      // ni toca master.gain.
+      tick: function() {
+        this._ensure();
+        this._blip(430, 0.03, 0.06, 'sine');
+      },
+      // Cierre del primer ciclo: un bit ligeramente más presente (sigue siendo sutil)
+      // para marcar que el pulso entra en su estado de "latido" visual. A partir de
+      // aquí el ticking audible se detiene (ver DecisionPacer).
+      tickEnd: function() {
+        this._ensure();
+        this._blip(520, 0.05, 0.09, 'sine');
       }
     };
 
@@ -1778,6 +1853,12 @@
       synth: window.speechSynthesis,
       voice: null,
       autoPlay: false,
+      // FEAT-003: token de generación para encadenar fragmentos de voz. Cada lectura
+      // nueva incrementa _seq; un fragmento pendiente (onend / setTimeout) sólo continúa
+      // si su token sigue siendo el vigente, de modo que stop() corta toda la secuencia
+      // y ningún fragmento "resucita" tras un cancel/cambio de escena.
+      _seq: 0,
+      _pauseTimer: null,
       init: function() {
         if(!this.synth) return;
         const setVoice = () => {
@@ -1814,23 +1895,228 @@
           .replace(/([.!?])\s/g, '$1  ')      // pausa ligera tras fin de frase
           .trim();
       },
-      speak: function(text) {
+      // FEAT-003: parte el texto normalizado en fragmentos de frase/cláusula para una
+      // lectura con pausas, tipo pódcast. Divide tras fin de frase (.!?) y tras puntuación
+      // mayor (; :), conservando el signo. Las cláusulas muy largas separadas por coma
+      // también se parten para no recitar de un tirón. NO altera el texto visible: sólo
+      // segmenta la cadena ya normalizada para la síntesis de voz.
+      _chunk: function(cleanText) {
+        // Cortar manteniendo el delimitador: tras .!?;: (y espacios que le sigan).
+        const raw = cleanText.split(/(?<=[.!?;:])\s+/);
+        const out = [];
+        raw.forEach(seg => {
+          const s = seg.trim();
+          if (!s) return;
+          // Partir cláusulas largas por coma para dar respiro sin trocear de más.
+          if (s.length > 140 && /,/.test(s)) {
+            let buf = '';
+            s.split(/(?<=,)\s+/).forEach(part => {
+              const p = part.trim();
+              if (!p) return;
+              if ((buf + ' ' + p).trim().length > 140 && buf) { out.push(buf.trim()); buf = p; }
+              else { buf = buf ? buf + ' ' + p : p; }
+            });
+            if (buf.trim()) out.push(buf.trim());
+          } else {
+            out.push(s);
+          }
+        });
+        return out.length ? out : (cleanText ? [cleanText] : []);
+      },
+      // FEAT-003: prosodia cálida y con variación sutil para evitar el tono plano. El
+      // ritmo baja ligeramente (~0.86-0.92) y el tono queda natural (~0.95-1.05);
+      // el último fragmento (cierre) se lee un pelín más lento y grave, como un cierre
+      // de párrafo de pódcast. Volumen siempre 1.0. Reutiliza la voz es ya elegida.
+      _buildUtterance: function(chunk, index, total) {
+        const u = new SpeechSynthesisUtterance(chunk);
+        u.voice = this.voice;
+        if(this.voice && this.voice.lang) u.lang = this.voice.lang;
+        const isLast = index === total - 1;
+        // Variación determinista y leve según posición para no sonar monótono.
+        const wobble = ((index % 3) - 1) * 0.015; // -0.015, 0, +0.015
+        u.rate = isLast ? 0.86 : (0.90 + wobble);
+        u.pitch = isLast ? 0.97 : (1.0 + wobble);
+        u.volume = 1.0;
+        return u;
+      },
+      // FEAT-003: encadena los fragmentos con una breve pausa silenciosa entre ellos.
+      // El siguiente fragmento arranca en el onend del anterior (más un pequeño gap por
+      // setTimeout) sólo si el token de generación sigue vigente; así stop() aborta todo.
+      speakSequence: function(text) {
         this.stop();
         if(!this.synth || !this.voice) return;
         const cleanText = this.normalize(text);
         if(!cleanText) return;
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.voice = this.voice;
-        if(this.voice.lang) utterance.lang = this.voice.lang;
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        this.synth.speak(utterance);
+        const chunks = this._chunk(cleanText);
+        if(!chunks.length) return;
+        const token = ++this._seq;
+        let i = 0;
+        const sayNext = () => {
+          if (token !== this._seq) return;           // una lectura nueva/stop invalidó esta
+          if (i >= chunks.length) return;
+          const u = this._buildUtterance(chunks[i], i, chunks.length);
+          const atEnd = /[.!?]$/.test(chunks[i]);     // pausa mayor al cerrar una frase
+          i++;
+          u.onend = () => {
+            if (token !== this._seq) return;
+            if (i >= chunks.length) return;
+            const gap = atEnd ? 320 : 150;            // pausa silenciosa entre fragmentos
+            this._pauseTimer = setTimeout(sayNext, gap);
+          };
+          this.synth.speak(u);
+        };
+        sayNext();
+      },
+      speak: function(text) {
+        // Punto de entrada único: delega en la lectura por fragmentos (FEAT-003).
+        this.speakSequence(text);
       },
       autoSpeak: function(text) { if(this.autoPlay) this.speak(text); },
-      stop: function() { if(this.synth && this.synth.speaking) this.synth.cancel(); }
+      stop: function() {
+        // Invalida cualquier fragmento pendiente (anti-resurrección) y vacía la cola nativa.
+        this._seq++;
+        if (this._pauseTimer) { clearTimeout(this._pauseTimer); this._pauseTimer = null; }
+        if(this.synth && (this.synth.speaking || this.synth.pending)) this.synth.cancel();
+      }
     };
     VoiceEngine.init();
+
+    // --- SEÑAL DE RITMO DE DECISIÓN (FEAT-002) ---
+    // DecisionPacer: una señal de progreso NO PUNITIVA que acompaña a las opciones en
+    // el hub y en las tres terminales. Rellena una barra fina a lo largo de ~7s y emite
+    // un "bit sonoro" (SfxEngine.tick) una vez por segundo DURANTE el primer ciclo.
+    // Al completarse NO autoelige, NO bloquea, NO oculta ni deshabilita opciones y NO
+    // termina el juego: entra en un estado de latido visual (.pulse) y las opciones
+    // siguen usables indefinidamente. El ticking AUDIBLE se detiene tras el primer
+    // ciclo (sólo queda el pulso visual). Honra prefers-reduced-motion (sin animación
+    // de barra ni ticking: una barra estática neutra). Gatea el sonido en
+    // SfxEngine.ready (no fuerza unlock). start() limpia cualquier temporizador previo
+    // y stop() es idempotente, de modo que los temporizadores nunca se apilan.
+    const DecisionPacer = {
+      DURATION: 7000,        // ~7s por ciclo
+      _bar: null,
+      _tickInt: null,
+      _endTo: null,
+      _reduced: function() {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      },
+      start: function(barEl) {
+        // Limpia siempre antes de arrancar para que nunca se apilen ciclos/sonidos.
+        this.stop();
+        if (!barEl) return;
+        this._bar = barEl;
+        const timer = barEl.closest ? barEl.closest('.decision-timer') : null;
+        if (timer) timer.classList.remove('is-pulsing');
+
+        // MOVIMIENTO REDUCIDO: afordancia estática, sin animación ni ticking.
+        if (this._reduced()) {
+          barEl.style.transition = 'none';
+          barEl.style.transform = 'scaleX(1)';
+          return;
+        }
+
+        // Arranca vacía y rellena durante DURATION (scaleX via transition CSS).
+        barEl.style.transition = 'none';
+        barEl.style.transform = 'scaleX(0)';
+        // Reflow para que el cambio de 0 -> 1 anime en vez de saltar.
+        void barEl.offsetWidth;
+        barEl.style.transition = 'transform ' + (this.DURATION / 1000) + 's linear';
+        barEl.style.transform = 'scaleX(1)';
+
+        // "Bit sonoro" gentil: una vez por segundo, SOLO durante el primer ciclo, y
+        // sólo si el audio ya está desbloqueado (no forzamos unlock).
+        this._tickInt = setInterval(() => {
+          if (SfxEngine.ready) SfxEngine.tick();
+        }, 1000);
+
+        // Al cerrar el primer ciclo: detener el ticking audible y pasar al latido
+        // visual. NO altera las opciones de ninguna forma.
+        this._endTo = setTimeout(() => {
+          if (this._tickInt) { clearInterval(this._tickInt); this._tickInt = null; }
+          if (SfxEngine.ready) SfxEngine.tickEnd();
+          const t = this._bar && this._bar.closest ? this._bar.closest('.decision-timer') : null;
+          if (t) t.classList.add('is-pulsing');
+        }, this.DURATION);
+      },
+      stop: function() {
+        if (this._tickInt) { clearInterval(this._tickInt); this._tickInt = null; }
+        if (this._endTo) { clearTimeout(this._endTo); this._endTo = null; }
+        if (this._bar) {
+          const t = this._bar.closest ? this._bar.closest('.decision-timer') : null;
+          if (t) t.classList.remove('is-pulsing');
+          this._bar.style.transition = 'none';
+          this._bar.style.transform = '';
+          this._bar = null;
+        }
+      }
+    };
+
+    // --- SEGUIMIENTO DE TERMINALES RESUELTAS (FEAT-002) ---
+    // Set en memoria (sin almacenamiento). Una terminal se marca "resuelta" cuando el
+    // usuario alcanza su estado de desenlace/reinicio, SIN tocar el cableado de
+    // navegación (launchApp onclick). Alimenta las palomitas de .btn-enlace, la línea
+    // de invitación y el contador global de lectura.
+    const terminalesResueltas = new Set();
+
+    // refreshTerminalChips(): refleja el Set en la barra lateral del hub.
+    //  - Marca cada .btn-enlace resuelta con la clase .resuelta + una palomita (✓).
+    //  - Actualiza el tono de la invitación cuando las tres están resueltas.
+    //  - Reescribe el contador global #progress-count conservando "Hub N/6".
+    // Es seguro llamarla en cualquier momento (hub renderizado o no): sólo actúa sobre
+    // los elementos presentes.
+    function refreshTerminalChips() {
+      document.querySelectorAll('.hub-scope .btn-enlace[data-terminal]').forEach(btn => {
+        const id = btn.getAttribute('data-terminal');
+        const done = terminalesResueltas.has(id);
+        btn.classList.toggle('resuelta', done);
+        let chk = btn.querySelector('.enlace-check');
+        if (done && !chk) {
+          chk = document.createElement('span');
+          chk.className = 'enlace-check';
+          chk.setAttribute('aria-hidden', 'true');
+          chk.textContent = '✓';
+          btn.appendChild(chk);
+        } else if (!done && chk) {
+          chk.remove();
+        }
+      });
+      // Invitación: cambia el tono cuando están las tres (sin bloquear nada).
+      const invite = document.querySelector('.hub-scope .enlaces-invite');
+      if (invite) {
+        invite.textContent = (terminalesResueltas.size >= 3)
+          ? 'Has resuelto las tres terminales remotas.'
+          : 'Explora y resuelve las tres terminales remotas.';
+      }
+      // Contador global de lectura: refresca la parte de Terminales incluso si el hub
+      // no se re-renderiza mientras estamos dentro de una terminal.
+      const pc = document.getElementById('progress-count');
+      if (pc) {
+        const visitadosRuta = document.querySelectorAll('.hub-scope .progress-step.visited').length;
+        pc.textContent = `Hub ${visitadosRuta}/6 · Terminales ${terminalesResueltas.size}/3`;
+      }
+    }
+    // Expuesta para que las terminales la invoquen al marcarse resueltas.
+    window.refreshTerminalChips = refreshTerminalChips;
+    window.terminalesResueltas = terminalesResueltas;
+
+    // FEAT-002: asegura un hermano .decision-timer inmediatamente después del
+    // contenedor de opciones de una terminal y arranca la señal de ritmo sobre él.
+    // Crea el elemento una sola vez (lo reutiliza/limpia en renders posteriores) para
+    // que no se apile, y lo deja dentro del mismo flujo con scroll que las opciones.
+    function startTerminalPacer(optContainer) {
+      if (!optContainer) return;
+      let timer = optContainer.nextElementSibling;
+      if (!timer || !timer.classList || !timer.classList.contains('decision-timer')) {
+        timer = document.createElement('div');
+        timer.className = 'decision-timer';
+        timer.setAttribute('aria-hidden', 'true');
+        timer.innerHTML = '<span class="decision-timer-bar"></span>';
+        optContainer.parentNode.insertBefore(timer, optContainer.nextSibling);
+      }
+      timer.classList.remove('is-pulsing');
+      DecisionPacer.start(timer.querySelector('.decision-timer-bar'));
+    }
+    window.startTerminalPacer = startTerminalPacer;
 
     // --- MANEJADOR DE APLICACIONES GLOBALES ---
     const AppManager = {
@@ -1915,6 +2201,9 @@
       // SIEMPRE mediante un timeout que siempre dispara + try/finally en done().
       runDecisionTransition: function(flavor, done) {
         if (this.decisionPending) return;        // coalesce: ignora clics solapados
+        // FEAT-002: al tomar una decisión, detener/limpiar la señal de ritmo para que
+        // no se apile con la de la escena siguiente. Idempotente y seguro si no hay nada.
+        DecisionPacer.stop();
         this.decisionPending = true;
 
         const terminals = { refugio: 1, lyra: 1, cronos: 1 };
@@ -1950,6 +2239,10 @@
         if (this.transitioning) return;
         // Si ya estamos en la app pedida, no hay transición que hacer.
         if (appId === this.currentApp) return;
+
+        // FEAT-002: al cambiar de app, detener/limpiar la señal de ritmo de la vista
+        // saliente para que los temporizadores nunca crucen entre apps.
+        DecisionPacer.stop();
 
         // Capturar el contenedor saliente y FIJAR currentApp de forma SÍNCRONA,
         // antes del setTimeout, para que cualquier lectura posterior sea coherente.
@@ -2129,6 +2422,9 @@
           if(!grafoNarrativo[id]) id = 'llegada_paramo';
           const escena = grafoNarrativo[id];
           VoiceEngine.stop();
+          // FEAT-002: detener cualquier señal de ritmo previa antes de reconstruir la
+          // escena (su indicador se recrea abajo), para que nunca se apilen ciclos.
+          DecisionPacer.stop();
 
           const targetAudio = (id === 'debate_logico' || id === 'diagnostico_humedad' || id === 'equilibrio_alcanzado') ? cotaAudio : ambientAudio;
           if (activeTrack !== targetAudio) {
@@ -2168,6 +2464,10 @@
             htmlOpc += `<button type="button" onclick="HubApp.elegirOpcion('${op.destino}')"><span>0${idx+1}</span>${op.texto}</button>`;
           });
           htmlOpc += `</div>`;
+          // FEAT-002: señal de ritmo de decisión (no punitiva) junto a las opciones.
+          // Vive dentro de #contenido-escena (columna con scroll), se reconstruye en
+          // cada render y nunca se fija ni solapa la barra inferior / el cajón móvil.
+          htmlOpc += `<div class="decision-timer" aria-hidden="true"><span class="decision-timer-bar"></span></div>`;
 
           // CRÉDITOS DE CIERRE: sólo en la escena final del hub (equilibrio_alcanzado),
           // tras la narrativa y la opción de reiniciar. Como renderEscena reconstruye
@@ -2211,11 +2511,18 @@
             paso.classList.toggle('visited', visitadas.has(paso.dataset.scene));
           });
           // FEAT-006 (gap 5): contador "N de 6" contando sólo los pasos de ruta visitados.
+          // FEAT-002 (PART C): unidad de lectura global. Se conserva la semántica
+          // "N de 6" de la ruta del hub, plegada en una sola línea que también refleja
+          // las terminales resueltas. refreshTerminalChips la reescribe con el mismo
+          // formato aunque el hub no vuelva a renderizar.
           const pc = document.getElementById('progress-count');
           if (pc) {
             const visitadosRuta = document.querySelectorAll('.hub-scope .progress-step.visited').length;
-            pc.textContent = `${visitadosRuta} de 6 escenas`;
+            pc.textContent = `Hub ${visitadosRuta}/6 · Terminales ${terminalesResueltas.size}/3`;
           }
+          // FEAT-002: refleja las terminales resueltas en la barra lateral en cada
+          // render del hub (palomitas + invitación + contador).
+          refreshTerminalChips();
           // FEAT-006 (gap 3): cadencia de cierre sólo en el desenlace; se retira en
           // cualquier otra escena (incluido el reinicio a llegada_paramo).
           const hubCont = document.getElementById('hub-container');
@@ -2224,6 +2531,10 @@
           
           let textoLimpio = escena.texto.replace(/<[^>]*>?/gm, '');
           VoiceEngine.autoSpeak(textoLimpio);
+          // FEAT-002: arranca la señal de ritmo una vez que las opciones ya están
+          // visibles y con listeners. No punitiva: al completar sólo late (ver
+          // DecisionPacer). El indicador vive dentro de #contenido-escena.
+          DecisionPacer.start(contenido.querySelector('.decision-timer .decision-timer-bar'));
         },
         // FEAT-004: navegación por clic de opción -> pulso futurista (esmeralda) y
         // LUEGO render del destino. El SFX select() ya se dispara en el listener de
@@ -2337,13 +2648,20 @@
       }
 
       function loadScene(id) {
+        // FEAT-002: limpia la señal de ritmo al entrar en cada render de la terminal.
+        DecisionPacer.stop();
         if(estado.agua <= 0 || estado.polvo <= 0 || estado.moral <= 0) {
           document.getElementById('ref-titulo-escenario').innerText = "FALLO SISTÉMICO CRÍTICO";
           document.getElementById('ref-texto-narrativa').innerHTML = "<span class='text-red-500 font-bold'>COLAPSO DE RECURSOS. EL REFUGIO HA CAÍDO.</span>";
           let opContainer = document.getElementById('ref-opciones');
           opContainer.innerHTML = `<button class="btn-accion btn-alerta p-4 w-full" onclick="RefugioApp.reset()">REINICIAR PROTOCOLO</button>`;
+          // FEAT-002: desenlace (fallo sistémico) => terminal resuelta.
+          terminalesResueltas.add('refugio');
+          refreshTerminalChips();
           return;
         }
+        // FEAT-002: llegar a la "Evaluación del Ciclo" (guion index 4) también resuelve.
+        if (id === 4) { terminalesResueltas.add('refugio'); refreshTerminalChips(); }
         let sc = guion[id];
         document.getElementById('ref-titulo-escenario').innerText = sc.title;
         let txtContainer = document.getElementById('ref-texto-narrativa');
@@ -2377,6 +2695,8 @@
             };
             opContainer.appendChild(btn);
           });
+          // FEAT-002: señal de ritmo junto a las opciones recién reveladas.
+          startTerminalPacer(opContainer);
         }, () => SfxEngine.typing('square'));
       }
 
@@ -2435,6 +2755,13 @@
       };
       
       function renderScene(id) {
+        // FEAT-002: limpia la señal de ritmo al entrar en cada render de la terminal.
+        DecisionPacer.stop();
+        // FEAT-002: desenlaces de Lyra => terminal resuelta (sin tocar la navegación).
+        if (id === 'rescate' || id === 'fuga' || id === 'fin') {
+          terminalesResueltas.add('lyra');
+          refreshTerminalChips();
+        }
         let sc = story[id];
         document.getElementById('lyra-scene-title').innerText = sc.title;
         let container = document.getElementById('lyra-choices');
@@ -2454,6 +2781,8 @@
             b.onclick = () => { SfxEngine.select(); AppManager.runDecisionTransition('lyra', () => { if(o.reset) renderScene('inicio'); else renderScene(o.next); }); };
             container.appendChild(b);
           });
+          // FEAT-002: señal de ritmo junto a la matriz de decisión recién revelada.
+          startTerminalPacer(container);
         }, () => SfxEngine.typing('sine'));
       }
 
@@ -2526,6 +2855,8 @@
       }
 
       function render(id) {
+        // FEAT-002: limpia la señal de ritmo al entrar en cada render de la terminal.
+        DecisionPacer.stop();
         let s = story[id];
         document.getElementById('cro-node-title').innerText = s.title;
         let optC = document.getElementById('cro-options');
@@ -2533,6 +2864,11 @@
         
         if(s.damage) { supervivencia -= s.damage; updateStats(); }
         if(supervivencia <= 0 && id !== 'falla_cuantica') { render('falla_cuantica'); return; }
+        // FEAT-002: desenlaces de Cronos => terminal resuelta (sin tocar la navegación).
+        if (id === 'sellado' || id === 'paradoja' || id === 'falla_cuantica') {
+          terminalesResueltas.add('cronos');
+          refreshTerminalChips();
+        }
 
         VoiceEngine.autoSpeak(s.txt);
         typeWriterEffect(document.getElementById('cro-story-text'), s.txt, 15, () => {
@@ -2544,6 +2880,8 @@
             b.onclick = () => { SfxEngine.select(); AppManager.runDecisionTransition('cronos', () => { if(o.reset) { supervivencia = 100; updateStats(); render('start'); } else render(o.next); }); };
             optC.appendChild(b);
           });
+          // FEAT-002: señal de ritmo junto a las opciones recién reveladas.
+          startTerminalPacer(optC);
         }, () => SfxEngine.typing('sawtooth'));
       }
 
