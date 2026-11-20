@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Páramo Omega | Hub Central de Simulaciones</title>
 
   <!-- Favicon SVG embebido (hexágono esmeralda sobre fondo oscuro, acorde a la marca). Evita el 404 de favicon.ico sin subir binarios. -->
@@ -156,8 +156,13 @@
     /* =========================================
        SISTEMA DE NAVEGACIÓN GLOBAL
        ========================================= */
-    body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
-    .app-container { display: none !important; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; overflow-x: hidden; overflow-y: auto; background-color: #000; z-index: 1; opacity: 1; transition: opacity 0.26s ease; scroll-behavior: smooth; }
+    /* En móvil 100vh = viewport GRANDE (incluye la barra del navegador): el
+       borde inferior del cuerpo/contenedor queda bajo la barra y, con el body
+       sin scroll, las opciones del final no se alcanzan. Usamos el viewport
+       dinámico real (100dvh) como override, manteniendo 100vh de fallback para
+       navegadores antiguos. En escritorio dvh==vh==alto visible, sin cambios. */
+    body { margin: 0; padding: 0; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; background: #000; }
+    .app-container { display: none !important; width: 100vw; height: 100vh; height: 100dvh; min-height: 100svh; position: absolute; top: 0; left: 0; overflow-x: hidden; overflow-y: auto; background-color: #000; z-index: 1; opacity: 1; transition: opacity 0.26s ease; scroll-behavior: smooth; }
     .app-container.active { z-index: 10; }
     /* Transición suave entre apps: opacity 0 durante el cruce de fundido. */
     .app-container.app-fade-out { opacity: 0; }
@@ -273,6 +278,12 @@
          ============================================================ */
 
       /* --- REFUGIO ZERO --- */
+      /* El contenedor trae la utilidad Tailwind min-h-screen (min-height:100vh).
+         En móvil ese 100vh es el viewport GRANDE y ganaría al height:100dvh del
+         .app-container, devolviendo el borde inferior bajo la barra del
+         navegador. Lo reajustamos al viewport pequeño real para que el frame
+         coincida con el área visible y el scroll alcance la última opción. */
+      #refugio-container.app-container { min-height: 100svh; }
       /* El <main class="flex-grow ... flex flex-col"> deja de fijar la altura
          al viewport y crece con su contenido. */
       #refugio-container > main {
@@ -365,9 +376,9 @@
       scroll-behavior: smooth;
     }
     /* Columna narrativa: contenido centrado con un ancho de lectura cómodo (~880px) que no se estira de borde a borde en pantallas anchas. */
-    .hub-scope .narrative-area { width: 100%; min-height: 100vh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) clamp(96px, 12vh, 150px); }
+    .hub-scope .narrative-area { width: 100%; min-height: 100vh; min-height: 100svh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) clamp(96px, 12vh, 150px); }
     .hub-scope #contenido-escena { width: 100%; max-width: 880px; margin-inline: auto; }
-    .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; box-sizing: border-box; padding: 40px 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid rgba(244,231,189,.1);}
+    .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; height: 100dvh; box-sizing: border-box; padding: 40px 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid rgba(244,231,189,.1);}
     .hub-scope .inventario-box { border-top: 1px solid rgba(244,231,189,.12); padding-top: 20px; }
     .hub-scope .choice-feedback {
       margin: 14px 0 0 0; padding: 12px 13px;
@@ -536,7 +547,7 @@
     }
     .cronos-scope[data-theme="amber"] { --term-phosphor: #fbbf24; }
     .cronos-scope[data-theme="red"] { --term-phosphor: #f87171; }
-    .cronos-scope .hardware-bezel { width: 95vw; max-width: 1200px; height: 88vh; background: #111; border: 2px solid #2a2d35; border-radius: 16px; padding: 1.5rem; display: flex; }
+    .cronos-scope .hardware-bezel { width: 95vw; max-width: 1200px; height: 88vh; height: 88dvh; background: #111; border: 2px solid #2a2d35; border-radius: 16px; padding: 1.5rem; display: flex; }
     .cronos-scope .crt-container { width: 100%; height: 100%; background: #04070a; padding: 2rem; display: flex; flex-direction: column; overflow-y: auto; }
     .cronos-scope .term-btn { background: rgba(0,0,0,0.5); border: 1px solid var(--term-rust); border-left: 3px solid var(--term-phosphor); color: var(--term-phosphor); padding: 1rem; margin-bottom: 0.75rem; width: 100%; text-align: left; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease, border-left-width 0.18s ease, box-shadow 0.18s ease; }
     .cronos-scope .term-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(4px); border-left-width: 5px; box-shadow: 0 0 14px rgba(120, 255, 120, 0.18); }
