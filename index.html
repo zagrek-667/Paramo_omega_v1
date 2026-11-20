@@ -92,16 +92,17 @@
       /* En tablet/móvil el hub pasa a columna: la narrativa primero, la barra lateral apilada debajo. */
       .app-container.active.hub-scope { display: flex !important; flex-direction: column; }
       .hub-scope .sidebar { position: relative; width: 100%; height: auto; min-height: fit-content; padding: 30px clamp(18px, 5vw, 28px); border-top: 1px solid rgba(244,231,189,.12); background: #0a1612; }
-      /* Padding cómodo (no borde a borde) y un colchón inferior grande para que los controles fijos NARRADOR / Volver al Hub (abajo-izquierda) nunca tapen la narración. */
-      .hub-scope .narrative-area { width: 100%; min-height: auto; padding: clamp(22px, 5vw, 30px) clamp(18px, 5vw, 28px) clamp(130px, 22vh, 180px); }
+      /* Padding cómodo (no borde a borde). El colchón inferior deja libre la barra de controles fija que en móvil pasa a ser una franja a lo ancho del borde inferior (ver .global-controls-container más abajo). */
+      .hub-scope .narrative-area { width: 100%; min-height: auto; padding: clamp(22px, 5vw, 30px) clamp(18px, 5vw, 28px) calc(72px + env(safe-area-inset-bottom, 0px)); }
       .hub-scope #contenido-escena { max-width: 720px; }
       .hub-scope .story-header { padding: 24px 0 22px; }
       .hub-scope .story-header h1 { font-size: clamp(2.2rem, 9vw, 2.9rem); }
       .intro-controls { bottom: 20px; right: 20px; left: 20px; justify-content: center; flex-wrap: wrap; }
     }
     @media (max-width: 480px) {
-      /* Pantallas estrechas (390px): aún más margen inferior para despejar los controles flotantes y texto sin desbordes horizontales. */
-      .hub-scope .narrative-area { padding-bottom: clamp(150px, 26vh, 200px); }
+      /* Pantallas estrechas (390/360px): texto sin desbordes horizontales. El padding
+         inferior de .narrative-area ya reserva el alto de la franja de controles, así que
+         las opciones quedan libres y tocables por encima de ella. */
       .hub-scope .scene-copy { padding: 20px 18px; }
     }
 
@@ -117,6 +118,30 @@
       display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
     .btn-global-control:hover, .btn-global-control.is-on { background: rgba(10, 25, 15, 0.95); color: #10b981; border-color: #10b981; box-shadow: 0 0 12px rgba(16, 185, 129, 0.2); }
+
+    /* MÓVIL: los controles globales dejan de flotar sobre la columna de decisiones.
+       Pasan a una franja compacta a lo ancho, anclada al borde inferior, con fondo
+       sólido propio y por fuera del área táctil de las opciones. El contenido ya reserva
+       espacio inferior (padding en .narrative-area) para que las opciones queden SIEMPRE
+       por encima de la franja y se puedan tocar. Estas reglas van DESPUÉS de las base
+       para que la media query gane por orden de cascada.
+       No se fija display en los botones: el toggle JS de #btn-global-back
+       (style.display none/flex) sigue mandando sobre su visibilidad. */
+    @media (max-width: 850px) {
+      .global-controls-container {
+        flex-direction: row; justify-content: center; align-items: stretch;
+        bottom: 0; left: 0; right: 0; gap: 10px;
+        padding: 8px clamp(12px, 4vw, 20px) calc(8px + env(safe-area-inset-bottom, 0px));
+        background: rgba(6, 12, 10, 0.94);
+        border-top: 1px solid rgba(244, 231, 189, 0.14);
+        backdrop-filter: blur(6px);
+      }
+      .btn-global-control { min-height: 44px; padding: 10px 14px; font-size: 11px; }
+    }
+    @media (max-width: 480px) {
+      .global-controls-container { gap: 8px; }
+      .btn-global-control { padding: 10px 10px; flex: 1 1 auto; max-width: 48%; }
+    }
 
     /* =========================================
        1. HUB CENTRAL (PÁRAMO OMEGA)
