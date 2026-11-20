@@ -1454,13 +1454,34 @@
         radial-gradient(ellipse 140% 120% at 50% 120%, rgba(188,71,73,.06), transparent 55%),
         repeating-linear-gradient(0deg, rgba(188,71,73,.035) 0 1px, transparent 1px 7px),
         radial-gradient(circle at 50% 42%, transparent 55%, rgba(0,0,0,.55) 100%),
-        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>");
+      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 160px 160px;
+      background-position: center, center, center, center, center;
+      background-attachment: fixed, fixed, fixed, fixed, fixed;
+    }
+    /* DERIVA FLOTANTE (micrositio): la foto atmosférica deja de ser una capa del
+       background (no animable individualmente y además fixed) y pasa a un
+       pseudo-elemento dedicado que SÍ podemos animar sólo con transform. El lavado
+       oscuro (idéntico al previo rgba(10,10,9,.80->.88)) se hornea DENTRO del
+       ::before como primera capa, de modo que la foto queda igual de oscurecida y
+       la legibilidad no cambia. position:fixed+inset:0 => cubre el viewport en
+       escritorio y móvil (equivale al antiguo background-attachment:fixed) sin
+       pelear con el scroll del contenedor. z-index:0 la deja por ENCIMA del fondo
+       propio del .app-container (texturas) pero por DEBAJO del contenido, que
+       elevamos a z-index:1; pointer-events:none no roba clics. */
+    .refugio-scope::before {
+      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
         linear-gradient(rgba(10,10,9,.80), rgba(10,10,9,.88)),
         url("https://images.unsplash.com/photo-1473580044384-7ba9967e16a0?auto=format&fit=crop&w=1600&q=80");
-      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 160px 160px, 100% 100%, cover;
-      background-position: center, center, center, center, center, center, center;
-      background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed;
+      background-size: 100% 100%, cover;
+      background-position: center, center;
+      background-repeat: no-repeat;
+      will-change: transform;
+      animation: terminalDrift 34s ease-in-out infinite alternate;
     }
+    /* Contenido de Refugio por encima de la foto a la deriva (sin tocar layout). */
+    .refugio-scope > * { position: relative; z-index: 1; }
 
     /* LYRA: scanlines CRT + viñeta/bloom verde + grano fino -> tubo de fósforo.
        Capa de fondo (ambientación): foto de callejón neón/circuitería muy oscurecida
@@ -1472,13 +1493,27 @@
         repeating-linear-gradient(0deg, rgba(74,246,38,.045) 0 1px, transparent 1px 3px),
         radial-gradient(ellipse 110% 90% at 50% 50%, rgba(74,246,38,.06), transparent 62%),
         radial-gradient(circle at 50% 50%, transparent 58%, rgba(0,0,0,.6) 100%),
-        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/></svg>");
+      background-size: 100% 3px, 100% 100%, 100% 100%, 150px 150px;
+      background-position: center, center, center, center;
+      background-attachment: fixed, fixed, fixed, fixed;
+    }
+    /* DERIVA FLOTANTE (micrositio Lyra): misma mecánica que Refugio. El lavado
+       verde-negro previo (rgba(2,6,2,.82)->rgba(2,8,2,.90)) se hornea dentro del
+       ::before para conservar el oscurecimiento/legibilidad exactos. */
+    .lyra-scope::before {
+      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
         linear-gradient(rgba(2,6,2,.82), rgba(2,8,2,.90)),
         url("https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80");
-      background-size: 100% 3px, 100% 100%, 100% 100%, 150px 150px, 100% 100%, cover;
-      background-position: center, center, center, center, center, center;
-      background-attachment: fixed, fixed, fixed, fixed, fixed, fixed;
+      background-size: 100% 100%, cover;
+      background-position: center, center;
+      background-repeat: no-repeat;
+      will-change: transform;
+      animation: terminalDrift 38s ease-in-out infinite alternate;
     }
+    /* Contenido de Lyra por encima de la foto a la deriva (sin tocar layout). */
+    .lyra-scope > * { position: relative; z-index: 1; }
 
     /* CRONOS: textura en la "pantalla" interna (crt-container) -> scanlines +
        viñeta de curvatura + grano, para que lea como un CRT real. El bezel
@@ -1489,11 +1524,38 @@
         repeating-linear-gradient(0deg, rgba(226,232,240,.035) 0 1px, transparent 1px 3px),
         radial-gradient(ellipse 100% 100% at 50% 50%, transparent 52%, rgba(0,0,0,.65) 100%),
         radial-gradient(ellipse 130% 90% at 50% 0%, rgba(120,200,255,.045), transparent 60%),
-        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>");
+      background-size: 100% 3px, 100% 100%, 100% 100%, 150px 150px;
+      background-position: center, center, center, center;
+    }
+    /* DERIVA FLOTANTE (micrositio Cronos): la foto vive en el ::before de la
+       "pantalla" interna (.crt-container). A diferencia de Refugio/Lyra NO era
+       fixed, así que usamos position:absolute anclada al propio crt-container
+       (de ahí position:relative abajo). El contenedor ya recorta (overflow-y:auto
+       -> ambos ejes clip), de modo que la escala/translate de la deriva nunca
+       asoma los bordes ni genera scroll extra. El lavado previo
+       rgba(4,7,10,.80->.88) se hornea en el ::before para no alterar legibilidad. */
+    .cronos-scope .crt-container { position: relative; }
+    .cronos-scope .crt-container::before {
+      content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
         linear-gradient(rgba(4,7,10,.80), rgba(4,7,10,.88)),
         url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80");
-      background-size: 100% 3px, 100% 100%, 100% 100%, 150px 150px, 100% 100%, cover;
-      background-position: center, center, center, center, center, center;
+      background-size: 100% 100%, cover;
+      background-position: center, center;
+      background-repeat: no-repeat;
+      will-change: transform;
+      animation: terminalDrift 30s ease-in-out infinite alternate;
+    }
+    /* El contenido del CRT (en flujo normal) debe quedar POR ENCIMA del ::before.
+       Como el ::before es absolute/z-index:0, elevamos los hijos directos a un
+       contexto propio para que pinten delante sin tocar el layout. */
+    .cronos-scope .crt-container > * { position: relative; z-index: 1; }
+
+    @keyframes terminalDrift {
+      0%   { transform: translate3d(-5px, 3px, 0) scale(1.03); }
+      50%  { transform: translate3d(4px, -4px, 0) scale(1.05); }
+      100% { transform: translate3d(6px, 4px, 0) scale(1.035); }
     }
 
     /* MOVIMIENTO REDUCIDO (FEAT-006): detener la fragmentación animada de los
@@ -1507,6 +1569,13 @@
       .lyra-scope .mt-enter-lyra,
       .cronos-scope .mt-enter-cronos {
         animation: none; opacity: 1; clip-path: none; transform: none;
+      }
+      /* La deriva flotante de las fotos de los micrositios queda estática: foto
+         visible y oscurecida igual, pero sin movimiento (transform:none). */
+      .refugio-scope::before,
+      .lyra-scope::before,
+      .cronos-scope .crt-container::before {
+        animation: none; transform: none;
       }
     }
   </style>
