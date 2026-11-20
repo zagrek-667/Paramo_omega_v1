@@ -11,7 +11,7 @@
   <!-- Fonts Compartidas -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=DM+Serif+Display:ital@0;1&family=Share+Tech+Mono&family=Teko:wght@400;600&family=VT323&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=Share+Tech+Mono&family=Teko:wght@400;600&family=VT323&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -33,6 +33,25 @@
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
   <style>
+    /* =========================================
+       TOKENS GLOBALES "FUTURO CERCANO" (FEAT-001)
+       Paleta compartida por la intro, los controles flotantes, el cajón móvil y
+       los créditos para que toda la experiencia lea cohesionada con el hub. El
+       hub define además su propia escala tipográfica/espaciado dentro de
+       .hub-scope. Las terminales conservan su identidad CRT (no consumen esto).
+       ========================================= */
+    :root {
+      --ink: #06100d;          /* grafito casi-negro */
+      --ink-2: #0a1612;        /* grafito un paso más claro */
+      --text-soft: #e7efe9;    /* blanco roto suave */
+      --muted-soft: #9bb5a9;   /* atenuado */
+      --accent: #10b981;       /* esmeralda: acento primario */
+      --accent-soft: rgba(16,185,129,.16);
+      --sand: #f4e7bd;         /* arena: acento ocasional (créditos/intro) */
+      --hair: rgba(231,239,233,.10);
+      --hair-strong: rgba(231,239,233,.16);
+      --ease: cubic-bezier(.22,.61,.36,1);
+    }
     /* =========================================
        PANTALLA DE VIDEO INTRODUCTORIO (CON AUTO-ESCAPE DE SEGURIDAD)
        ========================================= */
@@ -76,15 +95,15 @@
     }
     #intro-start-screen.hidden { opacity: 0; pointer-events: none; }
     .btn-intro-start {
-      background: rgba(5, 20, 16, 0.85); color: #f4e7bd; border: 2px solid #10b981;
+      background: rgba(6, 16, 13, 0.82); color: var(--sand); border: 1px solid var(--accent);
       padding: 22px 54px; font-family: 'DM Mono', monospace; font-size: 22px;
       text-transform: uppercase; letter-spacing: 4px; cursor: pointer;
-      backdrop-filter: blur(8px); border-radius: 6px; transition: all 0.3s ease;
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.45); display: flex; align-items: center; gap: 14px;
+      backdrop-filter: blur(8px); border-radius: 6px; transition: background .3s var(--ease), color .3s var(--ease), box-shadow .3s var(--ease), transform .3s var(--ease);
+      box-shadow: 0 0 24px rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 14px;
     }
-    .btn-intro-start:hover { background: #10b981; color: #051410; box-shadow: 0 0 50px rgba(16, 185, 129, 0.9); transform: scale(1.04); }
-    .btn-intro-start:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
-    .intro-start-hint { color: #9bb5a9; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
+    .btn-intro-start:hover { background: var(--accent); color: var(--ink); box-shadow: 0 0 40px rgba(16, 185, 129, 0.7); transform: scale(1.03); }
+    .btn-intro-start:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .intro-start-hint { color: var(--muted-soft); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
 
     /* Créditos de cierre de la experiencia: aparecen SÓLO al alcanzar la escena
        final del hub (equilibrio_alcanzado), bajo la narrativa y la opción de
@@ -93,7 +112,7 @@
       margin: 42px auto 8px; padding: 30px clamp(20px, 5vw, 38px);
       text-align: center; color: #cfe3da;
       font-family: 'DM Mono', monospace; line-height: 1.65;
-      background: rgba(5, 20, 16, 0.55); border: 1px solid rgba(16, 185, 129, 0.22);
+      background: rgba(6, 16, 13, 0.5); border: 1px solid var(--hair-strong);
       border-radius: 12px; backdrop-filter: blur(5px);
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
     }
@@ -174,7 +193,7 @@
     @media (max-width: 850px) {
       /* En tablet/móvil el hub pasa a columna: la narrativa primero, la barra lateral apilada debajo. */
       .app-container.active.hub-scope { display: flex !important; flex-direction: column; }
-      .hub-scope .sidebar { position: relative; width: 100%; height: auto; min-height: fit-content; padding: 30px clamp(18px, 5vw, 28px); border-top: 1px solid rgba(244,231,189,.12); background: #0a1612; }
+      .hub-scope .sidebar { position: relative; width: 100%; height: auto; min-height: fit-content; padding: 30px clamp(18px, 5vw, 28px); border-top: 1px solid var(--hair); background: var(--ink-2); }
       /* Padding cómodo (no borde a borde). El colchón inferior deja libre la barra de controles fija que en móvil pasa a ser una franja a lo ancho del borde inferior (ver .global-controls-container más abajo). */
       .hub-scope .narrative-area { width: 100%; min-height: auto; padding: clamp(22px, 5vw, 30px) clamp(18px, 5vw, 28px) calc(72px + env(safe-area-inset-bottom, 0px)); }
       .hub-scope #contenido-escena { max-width: 720px; }
@@ -237,8 +256,8 @@
         width: min(86vw, 320px); height: 100vh; height: 100dvh;
         z-index: 100000; /* por encima de la narrativa; por debajo de la franja de controles (999999) */
         padding: calc(54px + env(safe-area-inset-top, 0px)) 22px calc(84px + env(safe-area-inset-bottom, 0px));
-        background: #0a1612;
-        border-top: 0; border-left: 1px solid rgba(244, 231, 189, 0.14);
+        background: var(--ink-2);
+        border-top: 0; border-left: 1px solid var(--hair-strong);
         box-shadow: -14px 0 40px rgba(0, 0, 0, 0.5);
         overflow-y: auto; -webkit-overflow-scrolling: touch;
         transform: translateX(104%); /* CERRADO: fuera de pantalla a la derecha */
@@ -259,13 +278,13 @@
         top: calc(12px + env(safe-area-inset-top, 0px));
         right: clamp(12px, 4vw, 18px);
         min-height: 40px; padding: 9px 14px;
-        background: rgba(6, 12, 10, 0.92); color: #10b981;
-        border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 6px;
+        background: rgba(6, 16, 13, 0.92); color: var(--accent);
+        border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 6px;
         font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
         text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer;
         backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
       }
-      #hub-container .hub-drawer-toggle:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+      #hub-container .hub-drawer-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       /* Al abrir el cajón ocultamos el disparador para no duplicar controles. */
       #hub-container.drawer-open .hub-drawer-toggle { display: none; }
 
@@ -275,12 +294,12 @@
         position: absolute; z-index: 1;
         top: calc(12px + env(safe-area-inset-top, 0px)); right: 14px;
         width: 34px; height: 34px; padding: 0;
-        background: rgba(6, 12, 10, 0.6); color: #9bb5a9;
-        border: 1px solid rgba(244, 231, 189, 0.18); border-radius: 6px;
-        font: 700 20px/1 'DM Mono', monospace; cursor: pointer;
+        background: rgba(6, 16, 13, 0.6); color: var(--muted-soft);
+        border: 1px solid var(--hair-strong); border-radius: 6px;
+        font: 500 20px/1 'DM Mono', monospace; cursor: pointer;
       }
-      #hub-container .hub-drawer-close:hover { color: #10b981; border-color: #10b981; }
-      #hub-container .hub-drawer-close:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+      #hub-container .hub-drawer-close:hover { color: var(--accent); border-color: var(--accent); }
+      #hub-container .hub-drawer-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
       /* Velo táctil: cubre la pantalla cuando el cajón está abierto; tocarlo cierra. */
       #hub-container .hub-drawer-scrim {
@@ -320,14 +339,14 @@
     }
     
     .btn-global-control {
-      background: rgba(10, 15, 12, 0.85); color: #6b8278; border: 1px solid #1f332a;
+      background: rgba(6, 16, 13, 0.85); color: #6b8278; border: 1px solid var(--hair-strong);
       padding: 8px 12px; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: normal;
       border-radius: 4px; cursor: pointer; backdrop-filter: blur(4px);
-      transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px;
+      transition: background .25s var(--ease), color .25s var(--ease), border-color .25s var(--ease), box-shadow .25s var(--ease); text-transform: uppercase; letter-spacing: 0.5px;
       display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
-    .btn-global-control:hover, .btn-global-control.is-on { background: rgba(10, 25, 15, 0.95); color: #10b981; border-color: #10b981; box-shadow: 0 0 12px rgba(16, 185, 129, 0.2); }
-    .btn-global-control:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+    .btn-global-control:hover, .btn-global-control.is-on { background: rgba(8, 22, 18, 0.95); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--accent-soft); }
+    .btn-global-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     /* MÓVIL: los controles globales dejan de flotar sobre la columna de decisiones.
        Pasan a una franja compacta a lo ancho, anclada al borde inferior, con fondo
@@ -342,8 +361,8 @@
         flex-direction: row; justify-content: center; align-items: stretch;
         bottom: 0; left: 0; right: 0; gap: 10px;
         padding: 8px clamp(12px, 4vw, 20px) calc(8px + env(safe-area-inset-bottom, 0px));
-        background: rgba(6, 12, 10, 0.94);
-        border-top: 1px solid rgba(244, 231, 189, 0.14);
+        background: rgba(6, 16, 13, 0.94);
+        border-top: 1px solid var(--hair-strong);
         backdrop-filter: blur(6px);
       }
       .btn-global-control { min-height: 44px; padding: 10px 14px; font-size: 11px; }
@@ -474,8 +493,57 @@
        1. HUB CENTRAL (PÁRAMO OMEGA)
        ========================================= */
     .hub-scope {
-      --bg-dark: #0a0a0a; --panel-bg: #171717; --text-main: #e5e5e5; --muted: #93a79f;
-      --cyan: #81d9d0; --accent: #10b981; --error: #ef4444; --border: #333;
+      /* --- Tokens heredados (mantenidos por compatibilidad con reglas existentes) --- */
+      --bg-dark: #0a0a0a; --panel-bg: #171717; --error: #ef4444; --border: #333;
+
+      /* =========================================================
+         SISTEMA DE DISEÑO "FUTURO CERCANO" (FEAT-001)
+         Base casi monocroma grafito + texto blanco roto, acento
+         esmeralda dominante, cian secundario y uso puntual. Coral y
+         arena quedan DEMOTIDOS a acentos ocasionales (ver --coral/--sand).
+         Todas las reglas del hub consumen estas variables en vez de
+         valores hex/px dispersos, para que el sistema sea sistemático.
+         ========================================================= */
+      /* PALETA: base grafito/casi-negro fría + texto blanco roto suave. */
+      --ink: #06100d;              /* grafito casi-negro (base de paneles) */
+      --ink-2: #0a1612;            /* grafito un paso más claro (barras/cajón) */
+      --text-main: #e7efe9;        /* blanco roto suave sobre grafito */
+      --muted: #93a79f;            /* texto atenuado (etiquetas/HUD) */
+      --accent: #10b981;           /* ESMERALDA: acento primario dominante */
+      --accent-soft: rgba(16,185,129,.16);
+      --cyan: #81d9d0;             /* secundario, uso ESCASO (p.ej. feedback) */
+      --coral: #f4a38f;            /* acento OCASIONAL (tick/realce puntual) */
+      --sand: #f4e7bd;            /* SOLO para el título display (H1) */
+      /* Hairlines consistentes: divisores 1px de baja opacidad. */
+      --hair: rgba(231,239,233,.10);
+      --hair-strong: rgba(231,239,233,.16);
+      --hair-accent: rgba(16,185,129,.28);
+      --panel-tint: rgba(8,22,18,.42);   /* tinte sutil de agrupación */
+
+      /* ESCALA TIPOGRÁFICA modular basada en clamp() (sans/mono-forward). */
+      --fs-display: clamp(2.6rem, 6vw, 5.5rem);
+      --fs-h2:      clamp(1.7rem, 3.4vw, 2.6rem);
+      --fs-lead:    clamp(1.02rem, 1.4vw, 1.2rem);
+      --fs-body:    clamp(1rem, 1.2vw, 1.12rem);
+      --fs-label:   clamp(.66rem, 1.1vw, .74rem);
+      --fs-micro:   clamp(.6rem, .9vw, .66rem);
+      --tracking-label: .14em;
+      --tracking-wide:  .2em;
+      --lh-tight: 1.1;
+      --lh-body: 1.72;
+
+      /* ESCALA DE ESPACIADO rítmica basada en clamp(). */
+      --space-1: clamp(4px, .5vw, 6px);
+      --space-2: clamp(8px, 1vw, 12px);
+      --space-3: clamp(12px, 1.6vw, 18px);
+      --space-4: clamp(18px, 2.4vw, 26px);
+      --space-5: clamp(26px, 3.6vw, 40px);
+      --space-6: clamp(38px, 5vw, 60px);
+
+      /* Easing/duración de interacción estandarizados (hover corto). */
+      --ease: cubic-bezier(.22,.61,.36,1);
+      --dur-fast: .18s;
+
       font-family: 'Manrope', sans-serif;
       background-color: #102b25; background-image: linear-gradient(90deg, rgba(5,20,16,.93) 0%, rgba(5,20,16,.68) 42%, rgba(5,20,16,.78) 100%), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2200&q=88');
       background-size: cover; background-position: center; background-attachment: fixed; color: var(--text-main);
@@ -485,10 +553,10 @@
     /* Columna narrativa: contenido centrado con un ancho de lectura cómodo (~880px) que no se estira de borde a borde en pantallas anchas. */
     .hub-scope .narrative-area { width: 100%; min-height: 100vh; min-height: 100svh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) clamp(96px, 12vh, 150px); }
     .hub-scope #contenido-escena { width: 100%; max-width: 880px; margin-inline: auto; }
-    .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; height: 100dvh; box-sizing: border-box; padding: 40px 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid rgba(244,231,189,.1);}
-    .hub-scope .inventario-box { border-top: 1px solid rgba(244,231,189,.12); padding-top: 20px; }
+    .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; height: 100dvh; box-sizing: border-box; padding: var(--space-5) 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid var(--hair);}
+    .hub-scope .inventario-box { border-top: 1px solid var(--hair); padding-top: var(--space-4); }
     .hub-scope .choice-feedback {
-      margin: 14px 0 0 0; padding: 12px 13px;
+      margin: var(--space-3) 0 0 0; padding: var(--space-2) var(--space-3);
       font-size: 0.82rem; line-height: 1.55; color: var(--muted);
       border-left: 2px solid var(--cyan);
       background: rgba(129,217,208,.06);
@@ -496,7 +564,8 @@
     }
     .hub-scope .choice-feedback::before {
       content: "Lectura del enlace"; display: block;
-      font-size: 0.62rem; letter-spacing: 1.5px; text-transform: uppercase;
+      font-size: var(--fs-micro); letter-spacing: var(--tracking-label); text-transform: uppercase;
+      font-family: 'DM Mono', monospace;
       color: var(--cyan); margin-bottom: 5px; opacity: .85;
     }
     .hub-scope .choice-feedback.is-warning { border-left-color: var(--error); background: rgba(239,68,68,.06); }
@@ -504,36 +573,64 @@
     .hub-scope .inventario-lista { list-style: none; padding: 0; margin: 15px 0 0 0; color: var(--accent); font-weight: bold; }
     .hub-scope .inventario-lista li { margin-bottom: 10px; font-size: 0.95rem; }
     
-    .hub-scope .topbar { display: flex; justify-content: space-between; align-items: center; padding: 28px 0 30px; border-bottom: 1px solid rgba(244,231,189,.28); }
-    .hub-scope .brand { display: flex; align-items: center; gap: 12px; font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 800; }
-    .hub-scope .brand-mark { width: 12px; height: 12px; border-radius: 50%; background: #f4a38f; box-shadow: 0 0 18px #f4a38f; }
-    .hub-scope .status { color: var(--muted); font: 500 .7rem 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
-    .hub-scope .story-header { max-width: 100%; padding: clamp(28px, 5vh, 48px) 0 clamp(22px, 3.5vh, 32px); }
-    .hub-scope .story-header h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: clamp(2.6rem, 6vw, 5.5rem); line-height: .97; color: #f4e7bd; margin: 0 0 18px; letter-spacing: -.01em; }
-    .hub-scope .story-header p { font-family: 'Newsreader', Georgia, serif; font-size: clamp(1.05rem, 1.4vw, 1.25rem); color: var(--muted); line-height: 1.7; margin:0; }
+    .hub-scope .topbar { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) 0 var(--space-4); border-bottom: 1px solid var(--hair-strong); }
+    .hub-scope .brand { display: flex; align-items: center; gap: var(--space-2); font-size: .75rem; text-transform: uppercase; letter-spacing: var(--tracking-label); font-weight: 800; }
+    /* Marca: punto esmeralda (antes coral). Resplandor restringido. */
+    .hub-scope .brand-mark { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px rgba(16,185,129,.55); }
+    .hub-scope .status { color: var(--muted); font: 500 var(--fs-label) 'DM Mono', monospace; letter-spacing: var(--tracking-label); text-transform: uppercase; }
+    .hub-scope .story-header { position: relative; max-width: 100%; padding: var(--space-6) 0 var(--space-4); }
+    /* Motivo HUD futuro-cercano: micro-etiqueta monoespaciada quieta (DM Mono,
+       minúscula, baja opacidad) sobre la cabecera. Puramente decorativa
+       (pointer-events none); sin animación, respeta reduced-motion por defecto. */
+    .hub-scope .story-header::before {
+      content: '// PÁRAMO_OMEGA · NODO CENTRAL';
+      display: block; margin: 0 0 var(--space-2);
+      font: 500 var(--fs-micro) 'DM Mono', monospace;
+      letter-spacing: var(--tracking-wide); text-transform: uppercase;
+      color: var(--accent); opacity: .5; pointer-events: none;
+    }
+    /* Único rostro display del hub (DM Serif), teñido con el token arena de acento. */
+    .hub-scope .story-header h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: var(--fs-display); line-height: .97; color: var(--sand); margin: 0 0 var(--space-3); letter-spacing: -.01em; }
+    /* Lead: pasa de serif editorial a Manrope (jerarquía sans sistemática). */
+    .hub-scope .story-header p { font-family: 'Manrope', sans-serif; font-size: var(--fs-lead); font-weight: 400; color: var(--muted); line-height: var(--lh-body); margin:0; }
     
-    .hub-scope .visual-stage { position: relative; overflow: hidden; background: #07110f; min-height: clamp(160px, 22vh, 240px); border-radius: 22px 4px 22px 4px; border: 2px solid #132c25; margin-bottom: clamp(18px, 2.6vh, 26px); }
-    .hub-scope .stage-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .65; transition: transform .8s ease; }
+    /* Escena visual: hairline 1px + elevación restringida (antes borde 2px + glow). */
+    .hub-scope .visual-stage { position: relative; overflow: hidden; background: var(--ink); min-height: clamp(160px, 22vh, 240px); border-radius: 14px 4px 14px 4px; border: 1px solid var(--hair-accent); margin-bottom: var(--space-4); transition: border-color var(--dur-fast) var(--ease); }
+    /* Corchetes técnicos HUD en dos esquinas (motivo futuro cercano, sin JS). */
+    .hub-scope .visual-stage::before, .hub-scope .visual-stage::after {
+      content: ''; position: absolute; width: 18px; height: 18px; z-index: 2; pointer-events: none;
+      border: 1px solid var(--hair-accent);
+    }
+    .hub-scope .visual-stage::before { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+    .hub-scope .visual-stage::after { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+    .hub-scope .visual-stage:hover { border-color: rgba(16,185,129,.45); }
+    .hub-scope .stage-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .62; transition: transform .8s var(--ease); }
     .hub-scope .visual-stage:hover .stage-image { transform: scale(1.03); }
     
-    .hub-scope .scene-title { margin: 0 0 18px; color: #f4e7bd; font: 800 clamp(1.8rem, 3.5vw, 2.8rem)/1.1 'Bricolage Grotesque', sans-serif; }
-    .hub-scope .scene-copy { position: relative; max-width: 100%; padding: clamp(24px, 3vw, 34px) clamp(22px, 3.2vw, 36px); background: rgba(7,25,21,.75); border-radius: 4px 20px 4px 20px; backdrop-filter: blur(8px); border: 1px solid rgba(244,231,189,.15); }
-    .hub-scope .scene-copy::before { content: 'NARRACIÓN'; position: absolute; top: -10px; left: 18px; padding: 2px 8px; background: var(--accent); color: #102019; font: 700 .6rem 'DM Mono', monospace; letter-spacing: .12em; }
+    /* Título de escena: Manrope (antes Bricolage) dentro de la jerarquía sans. */
+    .hub-scope .scene-title { margin: 0 0 var(--space-3); color: var(--text-main); font: 800 var(--fs-h2)/var(--lh-tight) 'Manrope', sans-serif; letter-spacing: -.01em; }
+    /* NARRACIÓN: de tarjeta con borde + insignia a un filete lateral quieto + tinte sutil. */
+    .hub-scope .scene-copy { position: relative; max-width: 100%; padding: var(--space-3) var(--space-4); background: linear-gradient(90deg, var(--panel-tint), transparent 70%); border-left: 1px solid var(--hair-accent); border-radius: 0; }
+    .hub-scope .scene-copy::before { content: 'NARRACIÓN'; display: block; margin: 0 0 var(--space-2); padding: 0; background: none; color: var(--accent); font: 500 var(--fs-micro) 'DM Mono', monospace; letter-spacing: var(--tracking-wide); text-transform: uppercase; opacity: .72; }
     
-    .hub-scope .frame-set p { margin: 0 0 16px 0; color: #f4e7bd; font-size: clamp(1.02rem, 1.25vw, 1.15rem); line-height: 1.78; font-family: 'Newsreader', Georgia, serif; }
+    /* Cuerpo narrativo: Manrope (antes Newsreader) con escala sistemática. */
+    .hub-scope .frame-set p { margin: 0 0 var(--space-3) 0; color: var(--text-main); font-size: var(--fs-body); line-height: var(--lh-body); font-family: 'Manrope', sans-serif; font-weight: 400; }
     .hub-scope .frame-set p:last-child { margin-bottom: 0; }
     
-    .hub-scope .opciones { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; max-width: 100%; }
-    .hub-scope .opciones button { background: rgba(7,25,21,.9); color: #fff; border: 1px solid rgba(244,231,189,.25); padding: 18px 22px 18px 56px; border-radius: 4px 16px 4px 16px; font-size: .95rem; cursor: pointer; text-align: left; transition: all 0.25s ease; position: relative; width:100%; }
-    .hub-scope .opciones button > span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 24px; height: 24px; color: #17251f; background: var(--accent); border-radius: 50%; font: 700 .7rem 'DM Mono', monospace; }
-    .hub-scope .opciones button:hover { border-color: #f4a38f; background: #173b31; transform: translateX(6px); box-shadow: 0 0 16px rgba(244, 163, 143, 0.18); }
-    .hub-scope .opciones button:active { transform: translateX(3px); }
-    .hub-scope .opciones button:focus-visible { outline: 2px solid #f4a38f; outline-offset: 2px; }
-    .hub-scope .decision-heading { display: flex; align-items: center; gap: 10px; margin: 36px 0 12px; color: #f4e7bd; font: 700 .85rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .1em; }
-    .hub-scope .decision-heading::before { content: '◆'; color: #f4a38f; }
+    .hub-scope .opciones { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); max-width: 100%; }
+    .hub-scope .opciones button { background: rgba(8,22,18,.72); color: var(--text-main); border: 1px solid var(--hair-strong); padding: 18px 22px 18px 56px; border-radius: 4px 12px 4px 12px; font-family: 'Manrope', sans-serif; font-size: .95rem; cursor: pointer; text-align: left; transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); position: relative; width:100%; }
+    .hub-scope .opciones button > span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 24px; height: 24px; color: var(--ink); background: var(--accent); border-radius: 50%; font: 500 .7rem 'DM Mono', monospace; }
+    /* Hover esmeralda (antes coral): borde + fondo + leve avance, sin glow coral. */
+    .hub-scope .opciones button:hover { border-color: var(--accent); background: rgba(16,42,34,.82); transform: translateX(5px); box-shadow: inset 2px 0 0 var(--accent); }
+    .hub-scope .opciones button:active { transform: translateX(2px); }
+    /* Anillo de foco esmeralda nítido (antes coral). */
+    .hub-scope .opciones button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .hub-scope .decision-heading { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-5) 0 var(--space-2); color: var(--text-main); font: 500 var(--fs-label) 'DM Mono', monospace; text-transform: uppercase; letter-spacing: var(--tracking-label); }
+    /* Diamante de decisión: ahora esmeralda y quieto (antes coral). */
+    .hub-scope .decision-heading::before { content: '◆'; color: var(--accent); opacity: .8; }
     
-    .hub-scope .sound-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text-main); padding: 10px 14px; font: 500 .7rem 'DM Mono', monospace; text-transform: uppercase; background: rgba(255,255,255,.05); border: 1px solid var(--border); cursor: pointer; border-radius: 4px; width: 100%; justify-content: center; }
-    .hub-scope .sound-control.is-on { color: #102019; background: var(--accent); border-color: var(--accent); font-weight: bold; }
+    .hub-scope .sound-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text-main); padding: 10px 14px; font: 500 var(--fs-label) 'DM Mono', monospace; text-transform: uppercase; background: rgba(231,239,233,.04); border: 1px solid var(--hair-strong); cursor: pointer; border-radius: 4px; width: 100%; justify-content: center; }
+    .hub-scope .sound-control.is-on { color: var(--ink); background: var(--accent); border-color: var(--accent); font-weight: bold; }
     .hub-scope .sound-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .hub-scope .progress-nav { display: grid; gap: 4px; }
@@ -548,12 +645,13 @@
     .hub-scope .progress-step.active.visited { opacity: 1; color: var(--accent); }
     .hub-scope .progress-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     /* FEAT-006 (gap 5): micro-indicador "N de 6" bajo la ruta; estética de .side-kicker. */
-    .hub-scope .progress-count { color: var(--muted); font: 500 .66rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .12em; margin: 10px 0 0; opacity: .9; }
-    .hub-scope .side-kicker { color: var(--muted); font: 500 .68rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 12px; }
+    .hub-scope .progress-count { color: var(--muted); font: 500 var(--fs-micro) 'DM Mono', monospace; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: var(--space-2) 0 0; opacity: .9; }
+    .hub-scope .side-kicker { color: var(--muted); font: 500 var(--fs-micro) 'DM Mono', monospace; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: 0 0 var(--space-2); }
     
-    .hub-scope .enlaces-remotos { border-top: 1px dashed var(--accent); padding-top: 20px; }
-    .hub-scope .btn-enlace { display: flex; align-items: center; gap: 10px; width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: #fff; padding: 12px 14px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.75rem; text-transform: uppercase; transition: all 0.2s; }
-    .hub-scope .btn-enlace:hover { background: rgba(16, 185, 129, 0.2); border-color: var(--accent); transform: translateX(3px); box-shadow: 0 0 14px rgba(16, 185, 129, 0.18); }
+    /* Separador de enlaces: filete quieto (antes 1px dashed esmeralda). */
+    .hub-scope .enlaces-remotos { border-top: 1px solid var(--hair); padding-top: var(--space-4); }
+    .hub-scope .btn-enlace { display: flex; align-items: center; gap: 10px; width: 100%; background: rgba(6,16,13,.5); border: 1px solid var(--hair-strong); color: var(--text-main); padding: 12px 14px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.75rem; text-transform: uppercase; transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+    .hub-scope .btn-enlace:hover { background: var(--accent-soft); border-color: var(--accent); transform: translateX(3px); }
     .hub-scope .btn-enlace:active { transform: translateX(1px); }
     .hub-scope .btn-enlace:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .hub-scope .btn-enlace i { font-size: 1.2rem; color: var(--accent); }
@@ -700,37 +798,27 @@
        ========================================= */
 
     /* HUB: la columna ya está centrada (max-width 880px). Afinamos ritmo/escalado. */
-    .hub-scope .decision-heading { margin: clamp(18px, 2.6vh, 26px) 0 0; font-size: clamp(.8rem, 1.6vw, .9rem); line-height: 1.4; }
-    .hub-scope .opciones { gap: clamp(12px, 1.6vw, 16px); padding-inline: clamp(2px, 1vw, 8px); }
+    .hub-scope .decision-heading { font-size: var(--fs-label); line-height: 1.4; }
+    .hub-scope .opciones { gap: var(--space-3); padding-inline: 0; }
     .hub-scope .opciones button {
       min-height: 44px; line-height: 1.45;
       font-size: clamp(.92rem, 1.15vw, 1rem);
       padding: clamp(15px, 1.8vw, 18px) clamp(18px, 2vw, 22px) clamp(15px, 1.8vw, 18px) clamp(48px, 5vw, 56px);
     }
 
-    /* FOLLOW-UP: marco sutil y no invasivo para el bloque de decisión.
-       La cabecera y la lista de opciones son hermanas en #contenido-escena; las
-       agrupamos visualmente con un panel translúcido MUY ligero (más tenue que la
-       tarjeta de NARRACIÓN) + una línea divisoria fina arriba, para que las
-       opciones se lean como una unidad y suban a la vista sin quedar al fondo.
-       Solo CSS: el markup (y por tanto los onclick=elegirOpcion y el selector
+    /* FEAT-001 (reducción de ruido): el doble panel con borde + fondo del bloque de
+       decisión se reduce a UNA agrupación por filete + espacio en blanco. La cabecera
+       sólo lleva un filete 1px superior de bajo contraste; las opciones respiran sin
+       caja. Solo CSS: el markup (y por tanto los onclick=elegirOpcion y el selector
        '#contenido-escena .opciones button' de los SFX) queda intacto. */
     .hub-scope .decision-heading {
-      padding: clamp(16px, 2.4vh, 22px) clamp(14px, 1.8vw, 20px) 0;
-      border: 1px solid rgba(244,231,189,.09);
-      border-bottom: 0;
-      border-radius: 14px 14px 0 0;
-      background: rgba(10,30,25,.32);
-      backdrop-filter: blur(4px);
+      margin-top: var(--space-5);
+      padding: var(--space-3) 0 0;
+      border-top: 1px solid var(--hair);
     }
     .hub-scope .decision-heading + .opciones {
-      margin-top: 0;
-      padding: clamp(10px, 1.4vh, 14px) clamp(14px, 1.8vw, 20px) clamp(16px, 2.4vh, 22px);
-      border: 1px solid rgba(244,231,189,.09);
-      border-top: 0;
-      border-radius: 0 0 14px 14px;
-      background: rgba(10,30,25,.32);
-      backdrop-filter: blur(4px);
+      margin-top: var(--space-3);
+      padding: 0;
     }
 
     /* REFUGIO: contenedor de opciones con colchón lateral propio y escalado. */
@@ -854,6 +942,14 @@
       #hub-container .sidebar { transition: none; }
       #hub-container .hub-drawer-scrim { transition: none; }
       #hub-container.ending-ambience::after { animation: none; opacity: 1; }
+      /* FEAT-001: los motivos "futuro cercano" (corchetes de .visual-stage y la
+         micro-etiqueta HUD de la cabecera) son estáticos por diseño; aquí sólo
+         neutralizamos las transiciones de hover/escala añadidas para que nada se
+         mueva bajo esta preferencia. */
+      .hub-scope .visual-stage,
+      .hub-scope .opciones button,
+      .hub-scope .btn-enlace { transition: none; }
+      .hub-scope .visual-stage:hover .stage-image { transform: none; }
     }
 
     /* =========================================
