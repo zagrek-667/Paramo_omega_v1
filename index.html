@@ -454,6 +454,62 @@
       }
     };
 
+    // --- MOTOR DE EFECTOS SONOROS (WebAudio) ---
+    // SFX sintéticos cortos generados con osciladores. El AudioContext se crea/reanuda
+    // sólo tras un gesto del usuario (vía unlockGlobalAudio) para no ser bloqueado por el navegador.
+    const SfxEngine = {
+      ctx: null,
+      ready: false,
+      unlock: function() {
+        try {
+          if (!this.ctx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            this.ctx = new AC();
+          }
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          this.ready = true;
+        } catch (e) { /* WebAudio no disponible: SFX silenciosos */ }
+      },
+      // Pequeño tono con envolvente de ganancia para evitar clics.
+      _blip: function(freq, duration, gain, type) {
+        if (!this.ready || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = type || 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.exponentialRampToValueAtTime(gain, now + 0.008);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration + 0.02);
+        } catch (e) { /* ignorar fallos puntuales de SFX */ }
+      },
+      // Tecleo: muy corto, ganancia baja, con ligera variación de tono.
+      // timbre: 'sine' (Lyra, limpio/agudo), 'square' (Refugio, terminal), 'sawtooth' (Cronos, mecánico).
+      typing: function(timbre) {
+        let base = 760;
+        if (timbre === 'square') base = 540;       // Refugio
+        else if (timbre === 'sawtooth') base = 320; // Cronos (más grave/pesado)
+        else if (timbre === 'sine') base = 920;     // Lyra (alto/limpio)
+        const freq = base + (Math.random() * 60 - 30);
+        this._blip(freq, 0.035, 0.035, timbre || 'sine');
+      },
+      // Sonido sutil al pasar el puntero sobre una opción.
+      hover: function() {
+        this._blip(660, 0.06, 0.03, 'sine');
+      },
+      // Sonido al elegir una opción.
+      select: function() {
+        this._blip(520, 0.07, 0.05, 'triangle');
+        this._blip(780, 0.09, 0.04, 'triangle');
+      }
+    };
+
     // --- MOTOR GLOBAL DE VOZ SINTÉTICA ---
     const VoiceEngine = {
       synth: window.speechSynthesis,
@@ -463,8 +519,15 @@
         if(!this.synth) return;
         const setVoice = () => {
           const voices = this.synth.getVoices();
-          this.voice = voices.find(v => v.lang.includes('es') && /(neural|natural|google|microsoft|sabina|helena|laura|jorge|pablo)/i.test(v.name)) 
-                       || voices.find(v => v.lang.includes('es')) 
+          if (!voices || !voices.length) return;
+          const esVoices = voices.filter(v => /^es/i.test(v.lang) || /es[-_]/i.test(v.lang));
+          // Prioridad: motores de alta calidad (Google / Microsoft / Natural / Neural),
+          // luego variantes regionales conocidas, luego cualquier voz en español.
+          const pool = esVoices.length ? esVoices : voices;
+          this.voice = pool.find(v => /(google|microsoft|natural|neural)/i.test(v.name))
+                       || pool.find(v => /(es-ES|es-MX|es-US|es_ES|es_MX|es_US)/i.test(v.lang))
+                       || pool.find(v => /(sabina|helena|laura|jorge|pablo|monica|paulina)/i.test(v.name))
+                       || esVoices[0]
                        || voices[0];
         };
         if (this.synth.onvoiceschanged !== undefined) this.synth.onvoiceschanged = setVoice;
@@ -478,13 +541,27 @@
           btnElement.classList.toggle('is-on', this.autoPlay);
         }
       },
+      normalize: function(text) {
+        return String(text)
+          .replace(/<[^>]*>?/gm, ' ')        // quitar etiquetas HTML
+          .replace(/[_]+/g, ' ')              // guiones bajos a espacios
+          .replace(/\s*\n\s*/g, ' ')          // saltos de línea a espacio
+          .replace(/([.!?;:])(?=\S)/g, '$1 ') // asegurar espacio tras puntuación
+          .replace(/[ \t]{2,}/g, ' ')         // colapsar espacios múltiples
+          .replace(/([.!?])\s/g, '$1  ')      // pausa ligera tras fin de frase
+          .trim();
+      },
       speak: function(text) {
         this.stop();
         if(!this.synth || !this.voice) return;
-        const cleanText = text.replace(/<[^>]*>?/gm, '').replace(/[_-]/g, ' ');
+        const cleanText = this.normalize(text);
+        if(!cleanText) return;
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.voice = this.voice;
-        utterance.rate = 0.95;
+        if(this.voice.lang) utterance.lang = this.voice.lang;
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
         this.synth.speak(utterance);
       },
       autoSpeak: function(text) { if(this.autoPlay) this.speak(text); },
@@ -537,8 +614,8 @@
       let inventario = [];
       let ambientAudio = document.getElementById('audio-hub');
       let cotaAudio = document.getElementById('audio-cota');
-      if(ambientAudio) ambientAudio.volume = 0.5;
-      if(cotaAudio) cotaAudio.volume = 0.5;
+      if(ambientAudio) ambientAudio.volume = 0.32;
+      if(cotaAudio) cotaAudio.volume = 0.32;
       let isAmbientOn = false;
       let activeTrack = ambientAudio;
       
@@ -634,6 +711,11 @@
           htmlOpc += `</div>`;
 
           document.getElementById('contenido-escena').innerHTML = html + htmlOpc;
+          // SFX de interacción en las opciones recién generadas (sobrevive al rebuild del innerHTML).
+          document.querySelectorAll('#contenido-escena .opciones button').forEach(btn => {
+            btn.addEventListener('mouseenter', () => SfxEngine.hover());
+            btn.addEventListener('click', () => SfxEngine.select());
+          });
           document.querySelectorAll('.hub-scope .progress-step').forEach(paso => paso.classList.toggle('active', paso.dataset.scene === id));
           document.getElementById('multimedia-info').innerHTML = `<button class="sound-control mt-2" onclick="HubApp.escucharEscena()">▶ Leer Escena Actual</button>`;
           
@@ -685,7 +767,7 @@
       let estado = { agua: 80, polvo: 70, moral: 60 };
       let initialized = false;
       let bgAudio = document.getElementById('audio-refugio');
-      if(bgAudio) bgAudio.volume = 0.4;
+      if(bgAudio) bgAudio.volume = 0.26;
 
       const guion = [
         { 
@@ -766,7 +848,9 @@
             let btn = document.createElement('button');
             btn.className = "btn-accion p-4 w-full text-left";
             btn.innerText = "> " + op.t;
+            btn.addEventListener('mouseenter', () => SfxEngine.hover());
             btn.onclick = () => {
+              SfxEngine.select();
               if(op.reset) { RefugioApp.reset(); return; }
               if(op.c.a) estado.agua = Math.max(0, Math.min(100, estado.agua + op.c.a));
               if(op.c.p) estado.polvo = Math.max(0, Math.min(100, estado.polvo + op.c.p));
@@ -778,7 +862,7 @@
             };
             opContainer.appendChild(btn);
           });
-        });
+        }, () => SfxEngine.typing('square'));
       }
 
       return {
@@ -793,7 +877,7 @@
     const LyraApp = (function() {
       let initialized = false;
       let lyraAudio = document.getElementById('audio-lyra');
-      if(lyraAudio) lyraAudio.volume = 0.4;
+      if(lyraAudio) lyraAudio.volume = 0.26;
       
       const codexDB = [
         "> ESTADO: AISLAMIENTO PERIMETRAL SECTOR 4",
@@ -851,10 +935,11 @@
             let b = document.createElement('button');
             b.className = "btn-cmd p-3 w-full text-left";
             b.innerText = "> " + o.t;
-            b.onclick = () => { if(o.reset) renderScene('inicio'); else renderScene(o.next); };
+            b.addEventListener('mouseenter', () => SfxEngine.hover());
+            b.onclick = () => { SfxEngine.select(); if(o.reset) renderScene('inicio'); else renderScene(o.next); };
             container.appendChild(b);
           });
-        });
+        }, () => SfxEngine.typing('sine'));
       }
 
       return {
@@ -876,7 +961,7 @@
     const CronosApp = (function() {
       let supervivencia = 100, initialized = false;
       let cronosAudio = document.getElementById('audio-cronos');
-      if(cronosAudio) cronosAudio.volume = 0.5;
+      if(cronosAudio) cronosAudio.volume = 0.32;
       
       const story = {
         start: { 
@@ -940,10 +1025,11 @@
             let b = document.createElement('button');
             b.className = "term-btn";
             b.innerText = "> " + o.t;
-            b.onclick = () => { if(o.reset) { supervivencia = 100; updateStats(); render('start'); } else render(o.next); };
+            b.addEventListener('mouseenter', () => SfxEngine.hover());
+            b.onclick = () => { SfxEngine.select(); if(o.reset) { supervivencia = 100; updateStats(); render('start'); } else render(o.next); };
             optC.appendChild(b);
           });
-        });
+        }, () => SfxEngine.typing('sawtooth'));
       }
 
       return {
@@ -962,6 +1048,7 @@
     // --- DESBLOQUEO GLOBAL DE AUDIO ---
     let globalAudioUnlocked = false;
     const unlockGlobalAudio = () => {
+      SfxEngine.unlock();
       if(!globalAudioUnlocked) {
         globalAudioUnlocked = true;
         const audios = ['audio-hub', 'audio-refugio', 'audio-lyra', 'audio-cronos', 'audio-cota'];
@@ -982,6 +1069,11 @@
     document.addEventListener('DOMContentLoaded', () => {
       IntroManager.init();
       HubApp.renderEscena('llegada_paramo');
+      // SFX de interacción en la navegación estática del hub (Terminales Remotas y pasos de progreso).
+      document.querySelectorAll('.hub-scope .btn-enlace, .hub-scope .progress-step').forEach(btn => {
+        btn.addEventListener('mouseenter', () => SfxEngine.hover());
+        btn.addEventListener('click', () => SfxEngine.select());
+      });
     });
 
     document.addEventListener('click', unlockGlobalAudio, { once: true });
