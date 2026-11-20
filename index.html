@@ -250,6 +250,13 @@
         backdrop-filter: blur(6px);
       }
       .btn-global-control { min-height: 44px; padding: 10px 14px; font-size: 11px; }
+      /* La barra de controles fija (~61px + safe-area) no debe tapar las decisiones
+         de las terminales. Reservamos colchón inferior en cada micrositio para que la
+         última opción quede siempre por encima de la barra y sea tocable. */
+      #refugio-container, #lyra-container, #cronos-container {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+      }
     }
     @media (max-width: 480px) {
       .global-controls-container { gap: 8px; }
