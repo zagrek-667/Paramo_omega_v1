@@ -1372,31 +1372,52 @@
         if (this.hasEntered) return;
         this.hasEntered = true;
 
-        if (this.video) this.video.pause();
-        this.overlay.classList.add('fade-out');
-        // Mismo velo/barrido futurista que usan los micrositios, para que el paso
-        // del video al Hub se sienta parte del mismo lenguaje visual.
-        AppManager.pulseVeil();
-        const hub = document.getElementById('hub-container');
-        if (hub) {
-          hub.classList.remove('app-enter');
-          void hub.offsetWidth;
-          hub.classList.add('app-enter');
-          setTimeout(() => hub.classList.remove('app-enter'), 460);
-          // Cascada tipo SO al abrir el hub desde la intro (mismo lenguaje).
-          AppManager.playCascade(hub);
-        }
-        setTimeout(() => {
-          this.overlay.style.display = 'none';
-        }, 800);
-
+        // 1) El fondo sonoro entra PRIMERO, de forma síncrona dentro del gesto del
+        //    usuario (clic en "Ingresar al Hub" o fin del video). Mantenerlo síncrono
+        //    preserva la activación por gesto; si se difiriera tras un timer, el
+        //    navegador podría bloquear el .play() inicial.
         unlockGlobalAudio();
         HubApp.forceStartAmbient();
         // SORPRESA (FEAT-005): arranca el lienzo ambiental del hub al entrar desde la intro.
         if (window.HubAmbient) { HubAmbient.start(); HubAmbient.intensify(); }
-        // FEAT-006 (gap 2): aviso de orientación, a lo sumo una vez por sesión, al
-        // llegar al hub desde la intro. Se autodescarta por timeout y no bloquea clics.
-        this.showFirstTimeHint();
+
+        // La intro queda pausada pero su overlay sigue visible (último fotograma /
+        // velo oscuro) para que no haya un hueco en negro mientras suena el audio.
+        if (this.video) this.video.pause();
+
+        // 2) El revelado visual del hub llega ~1s DESPUÉS, para recuperar la
+        //    sensación de "el fondo sonoro entra un segundo antes". Las duraciones
+        //    de fundido (0.8s overlay, 460ms app-enter) se mantienen intactas.
+        const revealHub = () => {
+          if (this.hubRevealed) return; // evita doble ejecución si hay doble disparo
+          this.hubRevealed = true;
+
+          this.overlay.classList.add('fade-out');
+          // Mismo velo/barrido futurista que usan los micrositios, para que el paso
+          // del video al Hub se sienta parte del mismo lenguaje visual.
+          AppManager.pulseVeil();
+          const hub = document.getElementById('hub-container');
+          if (hub) {
+            hub.classList.remove('app-enter');
+            void hub.offsetWidth;
+            hub.classList.add('app-enter');
+            setTimeout(() => hub.classList.remove('app-enter'), 460);
+            // Cascada tipo SO al abrir el hub desde la intro (mismo lenguaje).
+            AppManager.playCascade(hub);
+          }
+          setTimeout(() => {
+            this.overlay.style.display = 'none';
+          }, 800);
+
+          // FEAT-006 (gap 2): aviso de orientación, a lo sumo una vez por sesión, al
+          // llegar al hub desde la intro. Se muestra junto con el revelado para que no
+          // aparezca durante el segundo de solo-audio. Tiene su propio retardo interno.
+          this.showFirstTimeHint();
+        };
+
+        // Bajo prefers-reduced-motion las animaciones del velo/cascada están
+        // atenuadas; conservamos el compás audio-primero (~1s) porque no es movimiento.
+        setTimeout(revealHub, 950);
       },
 
       hintShown: false,
