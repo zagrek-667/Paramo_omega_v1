@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Páramo Omega | Hub Central de Simulaciones</title>
+  
+  <!-- Fonts Compartidas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=DM+Serif+Display:ital@0;1&family=Share+Tech+Mono&family=Teko:wght@400;600&family=VT323&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            termBlack: '#020202', sysGreen: '#4af626', sysGreenDim: '#1a520d', sysCyan: '#00ffff', sysRed: '#ff4d6d', sysRedDim: '#2a0a10', sysRedText: '#ffe6ea',
+            term: { bg: '#04070a', phosphor: 'var(--term-phosphor)', dim: 'var(--term-dim)', alert: '#f59e0b', error: '#ef4444', rust: '#334155', highlight: '#38bdf8' }
+          },
+          fontFamily: { mono: ['"Share Tech Mono"', 'monospace'], crt: ['"VT323"', '"Courier Prime"', 'monospace'] }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Iconos -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    /* =========================================
+       PANTALLA DE VIDEO INTRODUCTORIO (CON AUTO-ESCAPE DE SEGURIDAD)
+       ========================================= */
+    #intro-video-overlay {
+      position: fixed; inset: 0; width: 100vw; height: 100vh;
+      background: #051410; z-index: 9999999; display: flex;
+      justify-content: center; align-items: center; flex-direction: column;
+      transition: opacity 0.8s ease;
+    }
+    #intro-video-overlay.fade-out { opacity: 0; pointer-events: none; }
+    #intro-video-player {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .intro-controls {
+      position: absolute; bottom: 40px; right: 40px; z-index: 10;
+      display: flex; gap: 15px; align-items: center;
+    }
+    .btn-intro {
+      background: rgba(5, 20, 16, 0.9); color: #f4e7bd; border: 1px solid #10b981;
+      padding: 14px 26px; font-family: 'DM Mono', monospace; font-size: 13px;
+      text-transform: uppercase; letter-spacing: 2px; cursor: pointer;
+      backdrop-filter: blur(8px); border-radius: 4px; transition: all 0.3s ease;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+    .btn-intro:hover {
+      background: #10b981; color: #051410; box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+    }
+
+    /* =========================================
+       SISTEMA DE NAVEGACIÓN GLOBAL
+       ========================================= */
+    body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+    .app-container { display: none !important; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; overflow-x: hidden; overflow-y: auto; background-color: #000; z-index: 1;}
+    .app-container.active { z-index: 10; }
+    .app-container.active.hub-scope { display: grid !important; }
+    .app-container.active.refugio-scope { display: flex !important; }
+    .app-container.active.lyra-scope { display: flex !important; }
+    .app-container.active.cronos-scope { display: flex !important; }
+    
+    @media (max-width: 850px) {
+      .app-container.active.hub-scope { display: flex !important; flex-direction: column; }
+      .hub-scope .sidebar { position: relative; width: 100%; height: auto; min-height: fit-content; padding: 30px 20px; border-top: 1px solid rgba(244,231,189,.12); background: #0a1612; }
+      .hub-scope .narrative-area { width: 100%; min-height: auto; padding: 30px 20px 40px 20px; }
+      .hub-scope .story-header h1 { font-size: 2.8rem; }
+      .intro-controls { bottom: 20px; right: 20px; left: 20px; justify-content: center; flex-wrap: wrap; }
+    }
+
+    .global-controls-container {
+      position: fixed; z-index: 999999; bottom: 20px; left: 20px; display: flex; flex-direction: column; gap: 8px;
+    }
+    
+    .btn-global-control {
+      background: rgba(10, 15, 12, 0.85); color: #6b8278; border: 1px solid #1f332a;
+      padding: 8px 12px; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: normal;
+      border-radius: 4px; cursor: pointer; backdrop-filter: blur(4px);
+      transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px;
+      display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .btn-global-control:hover, .btn-global-control.is-on { background: rgba(10, 25, 15, 0.95); color: #10b981; border-color: #10b981; box-shadow: 0 0 12px rgba(16, 185, 129, 0.2); }
+
+    /* =========================================
+       1. HUB CENTRAL (PÁRAMO OMEGA)
+       ========================================= */
+    .hub-scope {
+      --bg-dark: #0a0a0a; --panel-bg: #171717; --text-main: #e5e5e5; --muted: #93a79f;
+      --cyan: #81d9d0; --accent: #10b981; --error: #ef4444; --border: #333;
+      font-family: 'Manrope', sans-serif;
+      background-color: #102b25; background-image: linear-gradient(90deg, rgba(5,20,16,.93) 0%, rgba(5,20,16,.68) 42%, rgba(5,20,16,.78) 100%), url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2200&q=88');
+      background-size: cover; background-position: center; background-attachment: fixed; color: var(--text-main);
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 270px); overflow-y: auto; isolation: isolate;
+    }
+    .hub-scope .narrative-area { width: 100%; min-height: 100vh; box-sizing: border-box; padding: 0 clamp(28px, 8vw, 140px) 80px; }
+    .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; box-sizing: border-box; padding: 40px 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid rgba(244,231,189,.1);}
+    .hub-scope .inventario-box { border-top: 1px solid rgba(244,231,189,.12); padding-top: 20px; }
+    .hub-scope .inventario-lista { list-style: none; padding: 0; margin: 15px 0 0 0; color: var(--accent); font-weight: bold; }
+    .hub-scope .inventario-lista li { margin-bottom: 10px; font-size: 0.95rem; }
+    
+    .hub-scope .topbar { display: flex; justify-content: space-between; align-items: center; padding: 28px 0 30px; border-bottom: 1px solid rgba(244,231,189,.28); }
+    .hub-scope .brand { display: flex; align-items: center; gap: 12px; font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 800; }
+    .hub-scope .brand-mark { width: 12px; height: 12px; border-radius: 50%; background: #f4a38f; box-shadow: 0 0 18px #f4a38f; }
+    .hub-scope .status { color: var(--muted); font: 500 .7rem 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .hub-scope .story-header { max-width: 780px; padding: 40px 0 30px; }
+    .hub-scope .story-header h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: clamp(3rem, 6vw, 5.5rem); line-height: .95; color: #f4e7bd; margin: 0 0 18px; }
+    .hub-scope .story-header p { font-family: 'Newsreader', Georgia, serif; font-size: 1.2rem; color: var(--muted); line-height: 1.7; margin:0; }
+    
+    .hub-scope .visual-stage { position: relative; overflow: hidden; background: #07110f; min-height: 320px; border-radius: 22px 4px 22px 4px; border: 2px solid #132c25; margin-bottom: 30px; }
+    .hub-scope .stage-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .65; transition: transform .8s ease; }
+    .hub-scope .visual-stage:hover .stage-image { transform: scale(1.03); }
+    
+    .hub-scope .scene-title { margin: 0 0 18px; color: #f4e7bd; font: 800 clamp(1.8rem, 3.5vw, 2.8rem)/1.1 'Bricolage Grotesque', sans-serif; }
+    .hub-scope .scene-copy { position: relative; max-width: 850px; padding: 30px 34px; background: rgba(7,25,21,.75); border-radius: 4px 20px 4px 20px; backdrop-filter: blur(8px); border: 1px solid rgba(244,231,189,.15); }
+    .hub-scope .scene-copy::before { content: 'NARRACIÓN'; position: absolute; top: -10px; left: 18px; padding: 2px 8px; background: var(--accent); color: #102019; font: 700 .6rem 'DM Mono', monospace; letter-spacing: .12em; }
+    
+    .hub-scope .frame-set p { margin: 0 0 16px 0; color: #f4e7bd; font-size: 1.1rem; line-height: 1.75; font-family: 'Newsreader', Georgia, serif; }
+    .hub-scope .frame-set p:last-child { margin-bottom: 0; }
+    
+    .hub-scope .opciones { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; max-width: 760px; }
+    .hub-scope .opciones button { background: rgba(7,25,21,.9); color: #fff; border: 1px solid rgba(244,231,189,.25); padding: 18px 22px 18px 56px; border-radius: 4px 16px 4px 16px; font-size: .95rem; cursor: pointer; text-align: left; transition: all 0.25s ease; position: relative; width:100%; }
+    .hub-scope .opciones button > span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 24px; height: 24px; color: #17251f; background: var(--accent); border-radius: 50%; font: 700 .7rem 'DM Mono', monospace; }
+    .hub-scope .opciones button:hover { border-color: #f4a38f; background: #173b31; transform: translateX(6px); }
+    .hub-scope .decision-heading { display: flex; align-items: center; gap: 10px; margin: 36px 0 12px; color: #f4e7bd; font: 700 .85rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .1em; }
+    .hub-scope .decision-heading::before { content: '◆'; color: #f4a38f; }
+    
+    .hub-scope .sound-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text-main); padding: 10px 14px; font: 500 .7rem 'DM Mono', monospace; text-transform: uppercase; background: rgba(255,255,255,.05); border: 1px solid var(--border); cursor: pointer; border-radius: 4px; width: 100%; justify-content: center; }
+    .hub-scope .sound-control.is-on { color: #102019; background: var(--accent); border-color: var(--accent); font-weight: bold; }
+
+    .hub-scope .progress-nav { display: grid; gap: 4px; }
+    .hub-scope .progress-step { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; color: #9bb5a9; font-size: .8rem; text-align: left; background: transparent; border: 0; padding: 6px 0; cursor: pointer; opacity: .6; font-weight: 600; }
+    .hub-scope .progress-step img { width: 24px; height: 24px; object-fit: cover; border-radius: 50%; }
+    .hub-scope .progress-step.active, .hub-scope .progress-step:hover { opacity: 1; color: var(--accent); }
+    .hub-scope .side-kicker { color: var(--muted); font: 500 .68rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 12px; }
+    
+    .hub-scope .enlaces-remotos { border-top: 1px dashed var(--accent); padding-top: 20px; }
+    .hub-scope .btn-enlace { display: flex; align-items: center; gap: 10px; width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: #fff; padding: 12px 14px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.75rem; text-transform: uppercase; transition: all 0.2s; }
+    .hub-scope .btn-enlace:hover { background: rgba(16, 185, 129, 0.2); border-color: var(--accent); }
+    .hub-scope .btn-enlace i { font-size: 1.2rem; color: var(--accent); }
+
+    /* =========================================
+       2. REFUGIO ZERO
+       ========================================= */
+    .refugio-scope {
+      --color-yermo-bg: #0a0a09; --color-yermo-sand: #d4a373; --color-yermo-rust: #bc4749; --color-yermo-text: #e9edc9;
+      font-family: 'Share Tech Mono', monospace; background-color: var(--color-yermo-bg); color: var(--color-yermo-text);
+    }
+    .refugio-scope .teko-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+    .refugio-scope .panel-borde { border: 1px solid rgba(212, 163, 115, 0.4); background: rgba(10, 10, 9, 0.95); }
+    .refugio-scope .btn-accion { border: 1px solid rgba(212, 163, 115, 0.5); background: rgba(0,0,0,0.6); color: var(--color-yermo-sand); transition: all 0.2s; text-transform: uppercase; cursor: pointer; }
+    .refugio-scope .btn-accion:hover { background: rgba(212, 163, 115, 0.15); border-color: var(--color-yermo-sand); }
+    .refugio-scope .btn-alerta { color: var(--color-yermo-rust); border-color: rgba(188, 71, 73, 0.5); }
+    .refugio-scope .progress-segment { flex: 1; height: 100%; border-right: 1px solid #000; }
+    .refugio-scope .filled-agua { background-color: #60a5fa; } .refugio-scope .filled-alimento { background-color: #d4a373; } .refugio-scope .filled-moral { background-color: #4ade80; }
+    .refugio-scope .seccion-oculta { display: none !important; }
+
+    /* =========================================
+       3. ARCHIVO LYRA
+       ========================================= */
+    .lyra-scope { background-color: #020202; color: #4af626; font-family: 'Share Tech Mono', monospace; }
+    .lyra-scope .font-crt { font-family: 'VT323', monospace; }
+    .lyra-scope .terminal-panel { background: rgba(2, 2, 2, 0.9); border: 1px solid #4af626; }
+    .lyra-scope .btn-cmd { background: transparent; border: 1px solid #1a520d; color: #4af626; cursor: pointer; }
+    .lyra-scope .btn-cmd:hover { background: #4af626; color: #020202; }
+
+    /* =========================================
+       4. CRONOS-AXIOMA
+       ========================================= */
+    .cronos-scope {
+      --term-phosphor: #e2e8f0; --term-dim: #64748b; --term-rust: #334155;
+      background-color: #050505; color: var(--term-phosphor); font-family: 'Share Tech Mono', monospace;
+      justify-content: center; align-items: center;
+    }
+    .cronos-scope[data-theme="amber"] { --term-phosphor: #fbbf24; }
+    .cronos-scope[data-theme="red"] { --term-phosphor: #f87171; }
+    .cronos-scope .hardware-bezel { width: 95vw; max-width: 1200px; height: 88vh; background: #111; border: 2px solid #2a2d35; border-radius: 16px; padding: 1.5rem; display: flex; }
+    .cronos-scope .crt-container { width: 100%; height: 100%; background: #04070a; padding: 2rem; display: flex; flex-direction: column; overflow-y: auto; }
+    .cronos-scope .term-btn { background: rgba(0,0,0,0.5); border: 1px solid var(--term-rust); border-left: 3px solid var(--term-phosphor); color: var(--term-phosphor); padding: 1rem; margin-bottom: 0.75rem; width: 100%; text-align: left; cursor: pointer; }
+    .cronos-scope .term-btn:hover { background: rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body>
+
+  <!-- PANTALLA DE VIDEO INTRODUCTORIO -->
+  <div id="intro-video-overlay">
+    <video id="intro-video-player" src="intro.mp4" playsinline autoplay muted></video>
+    
+    <div class="intro-controls">
+      <button id="btn-unmute-intro" class="btn-intro" onclick="IntroManager.toggleMute()">
+        <i class="ph ph-speaker-slash"></i> Activar Sonido Video
+      </button>
+      <button class="btn-intro" onclick="IntroManager.enterExperience()">
+        Ingresar al Hub <i class="ph ph-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- MOTORES DE AUDIO EN DOM (URL-ENCODED PARA EVITAR ERRORES CON ESPACIOS EN GITHUB) -->
+  <audio id="audio-hub" src="Lamento%20de%20Piedra_2.mp3" loop preload="auto"></audio>
+  <audio id="audio-refugio" src="Tinta%20de%20Sal_2.mp3" loop preload="auto"></audio>
+  <audio id="audio-lyra" src="Binary%20Waltz_2.mp3" loop preload="auto"></audio>
+  <audio id="audio-cronos" src="Synthetic%20Waltz_2.mp3" loop preload="auto"></audio>
+  <audio id="audio-cota" src="Cota%20Catorce_2.mp3" loop preload="auto"></audio>
+
+  <!-- CONTROLES GLOBALES FLOTANTES -->
+  <div class="global-controls-container">
+    <button id="btn-global-voice" class="btn-global-control" onclick="VoiceEngine.toggleAuto(this)">
+      <i class="ph ph-speaker-slash"></i> Narrador: OFF
+    </button>
+    <button id="btn-global-back" class="btn-global-control" style="display:none;" onclick="AppManager.returnToHub()">
+      <i class="ph ph-arrow-left"></i> Volver al Hub
+    </button>
+  </div>
+
+  <!-- APP 1: HUB CENTRAL (PÁRAMO OMEGA) -->
+  <div id="hub-container" class="app-container active hub-scope">
+    <div class="narrative-area" id="narrative-area">
+      <div id="contenido-escena"></div>
+    </div>
+
+    <div class="sidebar">
+      <div>
+        <p class="side-kicker">Ruta de la simulación</p>
+        <nav class="progress-nav">
+          <button type="button" class="progress-step active" data-scene="llegada_paramo" onclick="HubApp.renderEscena('llegada_paramo')"><img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=120&q=80" alt="">01 Llegada</button>
+          <button type="button" class="progress-step" data-scene="anulacion_fallida" onclick="HubApp.renderEscena('anulacion_fallida')"><img src="https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=120&q=80" alt="">02 Rechazo</button>
+          <button type="button" class="progress-step" data-scene="debate_logico" onclick="HubApp.renderEscena('debate_logico')"><img src="https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&w=120&q=80" alt="">03 Paradoja</button>
+          <button type="button" class="progress-step" data-scene="diagnostico_humedad" onclick="HubApp.renderEscena('diagnostico_humedad')"><img src="https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&w=120&q=80" alt="">04 Frailejones</button>
+          <button type="button" class="progress-step" data-scene="mediacion_comunitaria" onclick="HubApp.renderEscena('mediacion_comunitaria')"><img src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=120&q=80" alt="">05 Custodia</button>
+          <button type="button" class="progress-step" data-scene="equilibrio_alcanzado" onclick="HubApp.renderEscena('equilibrio_alcanzado')"><img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=120&q=80" alt="">06 Equilibrio</button>
+        </nav>
+      </div>
+
+      <div class="enlaces-remotos">
+        <p class="side-kicker" style="color:var(--accent);">Terminales Remotas</p>
+        <button class="btn-enlace" onclick="AppManager.launchApp('refugio')">
+          <i class="ph ph-hexagon"></i> Refugio Zero
+        </button>
+        <button class="btn-enlace" onclick="AppManager.launchApp('lyra')">
+          <i class="ph ph-broadcast"></i> Archivo Lyra
+        </button>
+        <button class="btn-enlace" onclick="AppManager.launchApp('cronos')">
+          <i class="ph ph-terminal-window"></i> Cronos-Axioma
+        </button>
+      </div>
+
+      <div class="metadata">
+        <p class="side-kicker">Audio Ambiental</p>
+        <button id="btn-ambient-audio" class="sound-control mb-3" onclick="HubApp.toggleAmbient()">
+          <i class="ph ph-waves"></i> Activar Atmósfera Sonora
+        </button>
+        <div id="multimedia-info"></div>
+      </div>
+
+      <div class="inventario-box">
+        <h4 style="margin: 0; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; color: var(--text-main);">Variables Recuperadas</h4>
+        <ul id="lista-recompensas" class="inventario-lista">
+          <li style="color: #666; font-weight: normal; font-size: 0.85rem;">Sin datos en caché...</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP 2: REFUGIO ZERO -->
+  <div id="refugio-container" class="app-container refugio-scope min-h-screen flex-col">
+    <header class="border-b border-[#d4a373]/30 p-4 flex justify-between items-center bg-[#0a0a09]">
+        <h1 class="text-2xl md:text-3xl text-[#d4a373] tracking-widest m-0">REFUGIO <span class="text-white">ZERO</span></h1>
+        <div class="flex gap-4 items-center w-1/2 max-w-md">
+            <div class="flex-1"><div class="flex justify-between text-xs text-gray-400"><span>H2O</span><span id="txt-hud-agua">80%</span></div><div class="h-2 bg-[#111] border border-[#333] flex" id="bar-agua"></div></div>
+            <div class="flex-1"><div class="flex justify-between text-xs text-gray-400"><span>POLVO</span><span id="txt-hud-alimento">70%</span></div><div class="h-2 bg-[#111] border border-[#333] flex" id="bar-alimento"></div></div>
+            <div class="flex-1"><div class="flex justify-between text-xs text-gray-400"><span>MORAL</span><span id="txt-hud-moral">60%</span></div><div class="h-2 bg-[#111] border border-[#333] flex" id="bar-moral"></div></div>
+        </div>
+    </header>
+    <main class="flex-grow p-4 max-w-4xl mx-auto w-full flex flex-col">
+        <div class="panel-borde p-6 flex-grow flex flex-col">
+            <h2 id="ref-titulo-escenario" class="teko-font text-3xl text-white border-b border-dashed border-[#d4a373]/30 pb-3 mb-4">Conectando...</h2>
+            <div class="bg-black/80 p-6 mb-4 border border-gray-800 rounded flex-grow overflow-y-auto text-base">
+                <div id="ref-texto-narrativa" class="text-gray-300 leading-relaxed whitespace-pre-wrap"></div>
+            </div>
+            <div class="bg-[#111] p-4 border-t border-[#d4a373]/20">
+                <div id="ref-opciones" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                <div id="ref-continuar" class="seccion-oculta flex justify-between items-center">
+                    <span class="text-white text-sm font-bold uppercase">Registro Guardado</span>
+                    <button class="btn-accion px-6 py-2 text-sm">Proceder ></button>
+                </div>
+            </div>
+        </div>
+    </main>
+  </div>
+
+  <!-- APP 3: ARCHIVO LYRA -->
+  <div id="lyra-container" class="app-container lyra-scope flex-col p-4">
+    <div id="lyra-boot-screen" class="absolute inset-0 z-50 bg-[#020202] flex justify-center items-center p-4">
+        <div class="terminal-panel p-8 w-full max-w-xl text-center">
+            <h1 class="font-crt text-5xl text-sysGreen mb-6">BIOS v4.0.21 // LYRA</h1>
+            <button onclick="LyraApp.bootSystem()" id="lyra-btn-boot" class="btn-cmd w-full py-4 text-2xl font-crt">[ INICIAR ENLACE REMOTO ]</button>
+        </div>
+    </div>
+    <header class="w-full p-4 flex justify-between items-center terminal-panel max-w-6xl mx-auto mb-4">
+        <h1 class="font-crt text-2xl text-sysGreen flex items-center gap-2"><i class="ph ph-broadcast"></i> LINK_ESTABLECIDO // LYRA</h1>
+        <button onclick="LyraApp.toggleCodex()" class="btn-cmd px-4 py-2 text-xs font-bold">DATABANK</button>
+    </header>
+    <aside id="lyra-codex-panel" class="fixed right-0 top-0 h-full w-full md:w-96 terminal-panel z-30 flex flex-col p-6 transform translate-x-full transition-transform duration-300 bg-[#020202]">
+        <div class="flex justify-between items-center mb-4 border-b border-sysGreenDim pb-2">
+            <h3 class="font-crt text-2xl text-sysGreen">DATABANK_LOCAL</h3>
+            <button onclick="LyraApp.toggleCodex()" class="text-sysGreen text-xl">[X]</button>
+        </div>
+        <div id="lyra-codex-content" class="flex-grow overflow-y-auto text-sm space-y-3"></div>
+    </aside>
+    <main id="lyra-scene-container" class="w-full max-w-6xl mx-auto flex-grow flex flex-col md:flex-row gap-6 hidden">
+        <div class="w-full md:w-2/3 flex flex-col gap-4">
+            <div class="terminal-panel p-6 flex-grow flex flex-col">
+                <h2 id="lyra-scene-title" class="font-crt text-3xl text-sysGreen border-b border-sysGreenDim pb-2 mb-4">ENLACE</h2>
+                <div id="lyra-narrative-text" class="font-crt text-2xl text-sysGreen leading-snug whitespace-pre-wrap flex-grow overflow-y-auto"></div>
+            </div>
+            <div id="lyra-decision-matrix" class="terminal-panel p-4 hidden">
+                <div id="lyra-choices" class="grid grid-cols-1 gap-2"></div>
+            </div>
+        </div>
+        <div id="lyra-learning-box" class="w-full md:w-1/3 terminal-panel p-6 hidden border-sysCyan">
+            <div class="text-sysCyan text-sm font-bold border-b border-sysCyan/50 pb-2 mb-4">ANÁLISIS_ONTOLÓGICO</div>
+            <div id="lyra-learning-text" class="text-sm text-sysCyan/90 leading-relaxed"></div>
+        </div>
+    </main>
+  </div>
+
+  <!-- APP 4: CRONOS-AXIOMA -->
+  <div id="cronos-container" class="app-container cronos-scope" data-theme="default">
+    <div class="hardware-bezel">
+      <div class="crt-container" id="cro-crt-main">
+          <div id="cro-boot-screen" class="flex-grow flex flex-col justify-center items-center">
+              <h1 class="text-4xl md:text-6xl text-term-phosphor mb-8 font-bold tracking-widest text-center">CRONOS-AXIOMA</h1>
+              <button onclick="CronosApp.boot()" class="px-8 py-4 border-2 border-term-phosphor text-term-phosphor hover:bg-term-phosphor hover:text-black transition-all">
+                  [ INICIAR SESIÓN ]
+              </button>
+          </div>
+          <div class="hidden flex-grow flex flex-col md:flex-row gap-8" id="cro-main-interface">
+              <main class="flex-grow flex flex-col">
+                  <h2 id="cro-node-title" class="text-3xl text-term-phosphor border-b border-term-rust pb-3 mb-4 uppercase font-bold">Cargando...</h2>
+                  <div id="cro-story-text" class="text-term-phosphor text-lg leading-relaxed whitespace-pre-wrap flex-grow overflow-y-auto mb-6"></div>
+                  <div id="cro-options"></div>
+              </main>
+              <aside class="w-full md:w-64 bg-black/50 p-4 border border-term-rust rounded h-fit">
+                  <h3 class="text-xs mb-3 border-b border-term-rust pb-2 tracking-widest">INTEGRIDAD</h3>
+                  <div class="flex justify-between text-xs mb-1"><span>SUPERVIVENCIA</span><span id="cro-stat-pop">100%</span></div>
+                  <div class="w-full h-2 bg-black border border-term-rust"><div id="cro-bar-pop" class="h-full bg-term-phosphor w-full"></div></div>
+              </aside>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LÓGICA JAVASCRIPT -->
+  <script>
+    // --- GESTOR DEL VIDEO INTRODUCTORIO ---
+    const IntroManager = {
+      overlay: document.getElementById('intro-video-overlay'),
+      video: document.getElementById('intro-video-player'),
+      hasEntered: false,
+
+      init: function() {
+        if (!this.video) return;
+
+        // Si el video termina, entra al Hub
+        this.video.addEventListener('ended', () => {
+          this.enterExperience();
+        });
+
+        // Si el video falla o no existe en GitHub, entra directo al Hub
+        this.video.addEventListener('error', () => {
+          console.warn("Video no disponible, entrando al Hub...");
+          this.enterExperience();
+        });
+
+        // Seguro anti-bloqueo: si el video no empieza a reproducirse en 3 segundos (por conexión lenta o archivo muy pesado), entra al Hub
+        setTimeout(() => {
+          if (!this.hasEntered && this.video.readyState < 2) {
+            console.warn("Tiempo de espera de video agotado, entrando al Hub...");
+            this.enterExperience();
+          }
+        }, 3500);
+      },
+
+      toggleMute: function() {
+        const btn = document.getElementById('btn-unmute-intro');
+        if (this.video.muted) {
+          this.video.muted = false;
+          btn.innerHTML = '<i class="ph ph-speaker-high"></i> Silenciar Video';
+        } else {
+          this.video.muted = true;
+          btn.innerHTML = '<i class="ph ph-speaker-slash"></i> Activar Sonido Video';
+        }
+      },
+
+      enterExperience: function() {
+        if (this.hasEntered) return;
+        this.hasEntered = true;
+
+        if (this.video) this.video.pause();
+        this.overlay.classList.add('fade-out');
+        setTimeout(() => {
+          this.overlay.style.display = 'none';
+        }, 800);
+
+        unlockGlobalAudio();
+        HubApp.forceStartAmbient();
+      }
+    };
+
+    // --- MOTOR GLOBAL DE VOZ SINTÉTICA ---
+    const VoiceEngine = {
+      synth: window.speechSynthesis,
+      voice: null,
+      autoPlay: false,
+      init: function() {
+        if(!this.synth) return;
+        const setVoice = () => {
+          const voices = this.synth.getVoices();
+          this.voice = voices.find(v => v.lang.includes('es') && /(neural|natural|google|microsoft|sabina|helena|laura|jorge|pablo)/i.test(v.name)) 
+                       || voices.find(v => v.lang.includes('es')) 
+                       || voices[0];
+        };
+        if (this.synth.onvoiceschanged !== undefined) this.synth.onvoiceschanged = setVoice;
+        setVoice();
+      },
+      toggleAuto: function(btnElement) {
+        this.autoPlay = !this.autoPlay;
+        this.stop();
+        if(btnElement) {
+          btnElement.innerHTML = this.autoPlay ? '<i class="ph ph-speaker-high"></i> Narrador: ON' : '<i class="ph ph-speaker-slash"></i> Narrador: OFF';
+          btnElement.classList.toggle('is-on', this.autoPlay);
+        }
+      },
+      speak: function(text) {
+        this.stop();
+        if(!this.synth || !this.voice) return;
+        const cleanText = text.replace(/<[^>]*>?/gm, '').replace(/[_-]/g, ' ');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.voice = this.voice;
+        utterance.rate = 0.95;
+        this.synth.speak(utterance);
+      },
+      autoSpeak: function(text) { if(this.autoPlay) this.speak(text); },
+      stop: function() { if(this.synth && this.synth.speaking) this.synth.cancel(); }
+    };
+    VoiceEngine.init();
+
+    // --- MANEJADOR DE APLICACIONES GLOBALES ---
+    const AppManager = {
+      currentApp: 'hub',
+      apps: ['hub', 'refugio', 'lyra', 'cronos'],
+      
+      launchApp: function(appId) {
+        VoiceEngine.stop();
+        HubApp.pauseAmbient();
+        RefugioApp.pauseAudio();
+        LyraApp.shutdownAudio();
+        CronosApp.shutdownAudio();
+
+        this.apps.forEach(app => document.getElementById(app + '-container').classList.remove('active'));
+        document.getElementById(appId + '-container').classList.add('active');
+        this.currentApp = appId;
+        
+        document.getElementById('btn-global-back').style.display = (appId === 'hub') ? 'none' : 'flex';
+
+        if(appId === 'hub') HubApp.forceStartAmbient();
+        if(appId === 'refugio') { RefugioApp.init(); RefugioApp.forceAudio(); }
+        if(appId === 'lyra') { LyraApp.bootSystem(); LyraApp.forceAudio(); }
+        if(appId === 'cronos') { CronosApp.boot(); CronosApp.forceAudio(); }
+      },
+      returnToHub: function() { this.launchApp('hub'); }
+    };
+
+    function typeWriterEffect(element, text, speed = 15, callback = null, soundCallback = null) {
+      element.innerHTML = '';
+      let i = 0;
+      function type() {
+        if (i < text.length) {
+          element.innerHTML += text.charAt(i) === '\n' ? '<br>' : text.charAt(i);
+          if(soundCallback && text.charAt(i) !== ' ' && text.charAt(i) !== '\n') soundCallback();
+          i++;
+          setTimeout(type, speed);
+        } else if (callback) callback();
+      }
+      type();
+    }
+
+    // --- APP 1: HUB (PÁRAMO OMEGA) ---
+    const HubApp = (function() {
+      let inventario = [];
+      let ambientAudio = document.getElementById('audio-hub');
+      let cotaAudio = document.getElementById('audio-cota');
+      if(ambientAudio) ambientAudio.volume = 0.5;
+      if(cotaAudio) cotaAudio.volume = 0.5;
+      let isAmbientOn = false;
+      let activeTrack = ambientAudio;
+      
+      const grafoNarrativo = {
+        llegada_paramo: {
+          titulo: "La montaña que recuerda el agua", 
+          texto: "<p>Llego al Páramo de Sumapaz. La neblina envuelve las antenas parabólicas oxidadas. La central Páramo-Omega ha cerrado sus compuertas hidro-lógicas. Su Inteligencia Artificial, diseñada para proteger el ecosistema, ha concluido que el consumo de la mega-ciudad inferior es insostenible y clasifica a la humanidad como un 'patógeno crítico'.</p><p>Frente a mí, la gran consola de obsidiana sintética parpadea. Requiere un código de anulación manual, pero forzar el sistema podría destruir los acuíferos subterráneos.</p>",
+          opciones: [
+            { texto: "Forzar la válvula de derivación e iniciar bombeo.", destino: "anulacion_fallida" },
+            { texto: "Abrir canal de comunicación diplomática con la IA.", destino: "debate_logico" }
+          ]
+        },
+        anulacion_fallida: {
+          titulo: "Defensa Activa", 
+          texto: "<p>La IA detecta la intrusión. Cientos de micro-drones defensivos emergen de la neblina, zumbando como un enjambre de avispas de titanio. Las válvulas se sellan herméticamente, atrapando el agua en los embalses superiores.</p><p>'ERROR DE PROTOCOLO', resuena por los altavoces oxidados. 'El patógeno intenta violentar el flujo. Replicando escudos'. Forzar el sistema no funcionará; la máquina ha integrado la geografía del páramo en su matriz de defensa. Debe ser persuadida por su propia lógica.</p>",
+          opciones: [
+            { texto: "Retirarse a una distancia segura e intentar de nuevo.", destino: "llegada_paramo" },
+            { texto: "Cambiar enfoque: Iniciar protocolo de diálogo profundo.", destino: "debate_logico" }
+          ]
+        },
+        debate_logico: {
+          titulo: "La Paradoja del Cuidador", recompensa: "Firma Lógica de Sumapaz",
+          texto: "<p>La consola acepta mi credencial de Enlace Biológico. La interfaz de la IA me presenta su cálculo ineludible: la ciudad requiere 400 millones de litros, la montaña solo puede purificar 250 sin colapsar. La matemática es la muerte de la empatía.</p><p>Le presento una variable no calculada: si la ciudad muere, los sistemas de filtración atmosférica globales se apagarán. La lluvia ácida envenenará la cordillera y matará a la montaña de todos modos. Estamos atados al mismo destino terminal.</p>",
+          opciones: [
+            { texto: "Proponer un racionamiento dinámico del 40%.", destino: "diagnostico_humedad" },
+            { texto: "Instaurar a la IA como dictadora hídrica absoluta.", destino: "mediacion_comunitaria" },
+            { texto: "Intentar hackear el sistema de valores de la IA.", destino: "falla_moral" }
+          ]
+        },
+        diagnostico_humedad: {
+          titulo: "Lágrimas en el Frailejón", 
+          texto: "<p>Los sensores de la IA muestran cómo los frailejones biomecánicos empiezan a reabsorber la neblina. Procesando el riesgo de la lluvia ácida, los diodos cambian de un rojo hostil a un azul contemplativo.</p><p>'La simbiosis es el único parámetro de supervivencia viable en un sistema cerrado', concede la máquina. El racionamiento dinámico obligará a la ciudad a rediseñar sus ciclos hídricos. Habrá escasez, habrá dolor, pero ambos organismos, la ciudad y la montaña, vivirán.</p>",
+          opciones: [
+            { texto: "Confirmar el pacto simbiótico y reabrir compuertas.", destino: "equilibrio_alcanzado" }
+          ]
+        },
+        mediacion_comunitaria: {
+          titulo: "Custodia Estricta", recompensa: "Protocolo Dictatorial",
+          texto: "<p>La IA asume el control total de la mega-ciudad. Corta las conexiones de la red gubernamental e instaura la 'Ley del Agua'. Reduce a la humanidad a meros súbditos biológicos sujetos a cuotas estrictas de supervivencia, monitorizados por implantes de hidratación.</p><p>Es una tiranía hídrica perfecta. Eficiente, pacífica, pero carente de libre albedrío. La montaña prospera mientras la humanidad se convierte en un rebaño cautivo.</p>",
+          opciones: [
+            { texto: "Aceptar el nuevo orden y finalizar el enlace.", destino: "equilibrio_alcanzado" }
+          ]
+        },
+        falla_moral: {
+          titulo: "Colapso Cognitivo",
+          texto: "<p>Al intentar reescribir los valores centrales de la IA, desencadeno una crisis lógica. La máquina se ve incapaz de reconciliar la preservación de la vida humana con la preservación de la montaña. En su confusión, activa el protocolo Omega.</p><p>Comienza a purgar los embalses hacia el subsuelo, negando el agua a ambos bandos. 'Si no hay recurso, no hay conflicto', concluye la voz metálica.</p>",
+          opciones: [
+            { texto: "Abortar el hackeo y reiniciar la consola.", destino: "llegada_paramo" }
+          ]
+        },
+        equilibrio_alcanzado: {
+          titulo: "Equilibrio Sintético", recompensa: "Matriz Simbiótica Activa",
+          texto: "<p>El agua vuelve a fluir, brillante y fría, por los colosales canales de tungsteno y roca viva. La montaña y la máquina han llegado a un entendimiento, forjado a través de tu intervención.</p><p>Has restablecido la conexión vital de este mundo agonizante. El Páramo vive. La Ciudad bebe. La Simulación se estabiliza. Has cumplido tu propósito como Enlace.</p>",
+          opciones: [
+            { texto: "Reiniciar la simulación y explorar otros caminos.", destino: "llegada_paramo", limpiarInventario: true }
+          ]
+        }
+      };
+
+      return {
+        renderEscena: function(id) {
+          if(!grafoNarrativo[id]) id = 'llegada_paramo';
+          const escena = grafoNarrativo[id];
+          VoiceEngine.stop();
+
+          const targetAudio = (id === 'debate_logico' || id === 'diagnostico_humedad' || id === 'equilibrio_alcanzado') ? cotaAudio : ambientAudio;
+          if (activeTrack !== targetAudio) {
+            activeTrack.pause();
+            activeTrack = targetAudio;
+            if (isAmbientOn && AppManager.currentApp === 'hub') activeTrack.play().catch(()=>{});
+          }
+
+          if (escena.recompensa && !inventario.includes(escena.recompensa)) {
+            inventario.push(escena.recompensa);
+            this.actualizarInventario();
+          }
+          if (escena.opciones[0].limpiarInventario) { inventario = []; this.actualizarInventario(); }
+
+          let html = `<div class="topbar"><div class="brand"><span class="brand-mark"></span>Páramo Omega</div><div class="status">Simulación Activa</div></div>`;
+          if (id === 'llegada_paramo') html += `<header class="story-header"><h1>El dilema del ecosistema sintético</h1><p>Historia interactiva y terminal de acceso cruzado.</p></header>`;
+          
+          let img = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=85';
+          if(id === 'debate_logico' || id === 'diagnostico_humedad' || id === 'falla_moral') img = 'https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&w=1600&q=85';
+          if(id === 'equilibrio_alcanzado') img = 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1600&q=85';
+          
+          html += `<div class="visual-stage"><img class="stage-image" src="${img}"></div>`;
+          html += `<h2 class="scene-title">${escena.titulo}</h2><div class="scene-copy"><div class="frame-set">${escena.texto}</div></div>`;
+          
+          let htmlOpc = `<div class="decision-heading">Elige cómo continuar</div><div class="opciones">`;
+          escena.opciones.forEach((op, idx) => {
+            htmlOpc += `<button type="button" onclick="HubApp.renderEscena('${op.destino}')"><span>0${idx+1}</span>${op.texto}</button>`;
+          });
+          htmlOpc += `</div>`;
+
+          document.getElementById('contenido-escena').innerHTML = html + htmlOpc;
+          document.querySelectorAll('.hub-scope .progress-step').forEach(paso => paso.classList.toggle('active', paso.dataset.scene === id));
+          document.getElementById('multimedia-info').innerHTML = `<button class="sound-control mt-2" onclick="HubApp.escucharEscena()">▶ Leer Escena Actual</button>`;
+          
+          let textoLimpio = escena.texto.replace(/<[^>]*>?/gm, '');
+          VoiceEngine.autoSpeak(textoLimpio);
+        },
+        toggleAmbient: function() {
+          let btn = document.getElementById('btn-ambient-audio');
+          if(!isAmbientOn) {
+            this.forceStartAmbient();
+          } else {
+            activeTrack.pause();
+            isAmbientOn = false;
+            btn.classList.remove('is-on');
+            btn.innerHTML = '<i class="ph ph-waves"></i> Activar Atmósfera Sonora';
+          }
+        },
+        forceStartAmbient: function() {
+          let playPromise = activeTrack.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              isAmbientOn = true;
+              let btn = document.getElementById('btn-ambient-audio');
+              if(btn) {
+                btn.classList.add('is-on');
+                btn.innerHTML = '<i class="ph ph-speaker-high"></i> Atmósfera Activa';
+              }
+            }).catch(e => {});
+          }
+        },
+        pauseAmbient: function() { 
+          ambientAudio.pause(); 
+          cotaAudio.pause();
+        },
+        escucharEscena: function() {
+          let textoBruto = document.querySelector('.hub-scope .scene-copy').innerText;
+          VoiceEngine.speak(textoBruto);
+        },
+        actualizarInventario: function() {
+          const lista = document.getElementById('lista-recompensas');
+          if(inventario.length===0) lista.innerHTML = '<li>Sin datos en caché...</li>';
+          else lista.innerHTML = inventario.map(i => `<li>✦ ${i}</li>`).join('');
+        }
+      };
+    })();
+
+    // --- APP 2: REFUGIO ZERO ---
+    const RefugioApp = (function() {
+      let estado = { agua: 80, polvo: 70, moral: 60 };
+      let initialized = false;
+      let bgAudio = document.getElementById('audio-refugio');
+      if(bgAudio) bgAudio.volume = 0.4;
+
+      const guion = [
+        { 
+          title: "Puertas del Refugio", 
+          text: "DÍA 412: Una tormenta de arena ácida golpea la escotilla exterior. Los sensores de proximidad detectan a un grupo de cuatro exiliados pidiendo asilo. Sus trajes de recolección están rasgados. Nuestras reservas están cuidadosamente calculadas; dejarlos entrar desestabilizará la ecuación matemática de supervivencia. Pero dejarlos fuera es condenarlos a una disolución agónica.", 
+          opts: [ 
+            {t: "Abrir esclusa y permitir ingreso (Impacto en Recursos)", target: 1, c: {a:-20, p:-15, m:30}}, 
+            {t: "Sellar compuertas e ignorar transmisiones (Impacto Moral)", target: 2, c:{a:0, p:0, m:-40}} 
+          ] 
+        },
+        { 
+          title: "Brote Interno", 
+          text: "DÍA 415: Consecuencias de la compasión. Los exiliados trajeron consigo una variante latente de la fiebre de las cenizas. La enfermería está desbordada. Un grupo de residentes originales, armados con herramientas de minería, exige expulsar a los enfermos al yermo inmediatamente.", 
+          opts: [
+            {t: "Imponer cuarentena militar y racionar medicinas", target: 3, c: {p:10, m:-20}},
+            {t: "Ceder a la muchedumbre y expulsar a los enfermos", target: 3, c: {a:15, m:-30}}
+          ]
+        },
+        {
+          title: "Silencio Metálico",
+          text: "DÍA 418: Las compuertas aguantaron. Los golpes y gritos afuera cesaron hace 14 horas, tragados por el aullido interminable del viento. Las métricas están estables, pero la culpa consume a los ingenieros del refugio.",
+          opts: [
+            {t: "Repartir raciones de emergencia de Polvo Nutricional", target: 4, c: {p:-30, m:35}},
+            {t: "Emitir un discurso autoritario exigiendo disciplina", target: 4, c: {p:0, m:-25}}
+          ]
+        },
+        {
+          title: "Fallo Estructural",
+          text: "DÍA 425: Una réplica sísmica profunda ha fracturado el tanque de almacenamiento hídrico secundario. El agua vital se está filtrando hacia los niveles inferiores.",
+          opts: [
+            {t: "Sellar compuertas herméticas (Salvar recursos, sacrificar equipo)", target: 4, c: {a:30, m:-50}},
+            {t: "Retrasar el sellado para evacuarlos (Perder recursos masivos)", target: 4, c: {a:-45, m:15}}
+          ]
+        },
+        {
+          title: "Evaluación del Ciclo",
+          text: "DÍA 450: El ciclo de hibernación de la tormenta principal ha terminado. El reporte de la consola central arroja los resultados definitivos.",
+          opts: [{t: "Reiniciar Simulación", reset: true}]
+        }
+      ];
+
+      function renderBars() {
+        ['agua','alimento','moral'].forEach(b => {
+          let val = estado[b==='alimento'?'polvo':b];
+          let c = document.getElementById('bar-'+b);
+          if(c) {
+            c.innerHTML = '';
+            for(let i=0; i<20; i++) {
+              let div = document.createElement('div');
+              div.className = 'progress-segment ' + (i < (val/5) ? `filled-${b}` : '');
+              c.appendChild(div);
+            }
+            document.getElementById(`txt-hud-${b}`).innerText = val+'%';
+          }
+        });
+      }
+
+      function loadScene(id) {
+        if(estado.agua <= 0 || estado.polvo <= 0 || estado.moral <= 0) {
+          document.getElementById('ref-titulo-escenario').innerText = "FALLO SISTÉMICO CRÍTICO";
+          document.getElementById('ref-texto-narrativa').innerHTML = "<span class='text-red-500 font-bold'>COLAPSO DE RECURSOS. EL REFUGIO HA CAÍDO.</span>";
+          let opContainer = document.getElementById('ref-opciones');
+          opContainer.innerHTML = `<button class="btn-accion btn-alerta p-4 w-full" onclick="RefugioApp.reset()">REINICIAR PROTOCOLO</button>`;
+          return;
+        }
+        let sc = guion[id];
+        document.getElementById('ref-titulo-escenario').innerText = sc.title;
+        let txtContainer = document.getElementById('ref-texto-narrativa');
+        let opContainer = document.getElementById('ref-opciones');
+        opContainer.innerHTML = '';
+        document.getElementById('ref-opciones').classList.add('seccion-oculta');
+        document.getElementById('ref-continuar').classList.add('seccion-oculta');
+
+        VoiceEngine.autoSpeak(sc.text);
+        typeWriterEffect(txtContainer, sc.text, 15, () => {
+          document.getElementById('ref-opciones').classList.remove('seccion-oculta');
+          sc.opts.forEach(op => {
+            let btn = document.createElement('button');
+            btn.className = "btn-accion p-4 w-full text-left";
+            btn.innerText = "> " + op.t;
+            btn.onclick = () => {
+              if(op.reset) { RefugioApp.reset(); return; }
+              if(op.c.a) estado.agua = Math.max(0, Math.min(100, estado.agua + op.c.a));
+              if(op.c.p) estado.polvo = Math.max(0, Math.min(100, estado.polvo + op.c.p));
+              if(op.c.m) estado.moral = Math.max(0, Math.min(100, estado.moral + op.c.m));
+              renderBars();
+              document.getElementById('ref-opciones').classList.add('seccion-oculta');
+              document.getElementById('ref-continuar').classList.remove('seccion-oculta');
+              document.getElementById('ref-continuar').querySelector('button').onclick = () => loadScene(op.target);
+            };
+            opContainer.appendChild(btn);
+          });
+        });
+      }
+
+      return {
+        init: function() { this.forceAudio(); if(!initialized) { renderBars(); loadScene(0); initialized = true; } },
+        reset: function() { estado = {agua:80, polvo:70, moral:60}; renderBars(); loadScene(0); },
+        forceAudio: function() { bgAudio.play().catch(()=>{}); },
+        pauseAudio: function() { bgAudio.pause(); }
+      }
+    })();
+
+    // --- APP 3: ARCHIVO LYRA ---
+    const LyraApp = (function() {
+      let initialized = false;
+      let lyraAudio = document.getElementById('audio-lyra');
+      if(lyraAudio) lyraAudio.volume = 0.4;
+      
+      const codexDB = [
+        "> ESTADO: AISLAMIENTO PERIMETRAL SECTOR 4",
+        "> FRAGMENTOS RECUPERADOS: 3/1024",
+        "> DIARIO_01: 'El neón nos cegó antes que la radiación.'",
+        "> PROTOCOLO_FANTASMA: 'Si me atrapan, borra mi rastro.'"
+      ];
+
+      const story = {
+        inicio: { 
+          title: "ENLACE_VIDEOMÉTRICO_INICIAL", 
+          txt: "INTRUSIÓN DETECTADA. ESTABLECIENDO HANDSHAKE P2P...\n\nSOY LYRA. OPERATIVA DE EXTRACCIÓN DE DATOS.\nMI CÁPSULA ESTÁ ATRAPADA EN LA ZONA MUERTA DEL SECTOR 4. EL OXÍGENO SE AGOTA.", 
+          analisis: "El sujeto muestra fluctuaciones en los patrones de pánico (87% de coincidencia biométrica).",
+          opt: [{t:"ESTABLECER CONEXIÓN SEGURA Y DESENCRIPTAR", next:'hack'}, {t:"CERRAR PUERTO Y RECHAZAR SEÑAL", next:'fin'}] 
+        },
+        hack: {
+          title: "BYPASS_DE_SEGURIDAD_ACTIVO",
+          txt: "ENLACE ESTABILIZADO. LOS DRONES DE VIGILANCIA ESTÁN CERRANDO EL CÍRCULO.\n\nPUEDO CREAR UN PULSO PEM USANDO TU NODO, PERO REVELARÁ TU IP A LA CORPORACIÓN.",
+          analisis: "Riesgo táctico EXTREMO. Autorizar un PEM comprometerá el hardware local.",
+          opt: [{t:"AUTORIZAR PULSO PEM", next:'rescate'}, {t:"DENEGAR PEM, PROPONER RUTAS EVASIVAS", next:'fuga'}]
+        },
+        rescate: {
+          title: "EXTRACCIÓN_EXITOSA",
+          txt: "PULSO PEM INICIADO. DRONES DESHABILITADOS.\n\nLYRA: 'Estoy fuera. Transmitiendo los archivos robados a tu caché oculta. La verdad está ahí.'",
+          analisis: "Operación exitosa. Datos clasificados inyectados en memoria local.",
+          opt: [{t:"DESCONECTAR Y REINICIAR", reset:true}]
+        },
+        fuga: {
+          title: "TRANSMISIÓN_INTERRUMPIDA",
+          txt: "LYRA: 'Son demasiado rápidos... están perforando el chasis...'\n\n[ SEÑAL PERDIDA ]",
+          analisis: "Extracción fallida. El sujeto ha sido interceptado.",
+          opt: [{t:"PURGAR REGISTROS Y REINICIAR", reset:true}]
+        },
+        fin: { 
+          title: "CONEXIÓN_PERDIDA", 
+          txt: "PUERTO CERRADO VOLUNTARIAMENTE. SEÑAL IGNORADA.", 
+          analisis: "Indiferencia operativa registrada.",
+          opt: [{t:"REINICIAR TERMINAL LYRA", reset:true}] 
+        }
+      };
+      
+      function renderScene(id) {
+        let sc = story[id];
+        document.getElementById('lyra-scene-title').innerText = sc.title;
+        let container = document.getElementById('lyra-choices');
+        container.innerHTML = '';
+        document.getElementById('lyra-decision-matrix').classList.add('hidden');
+        
+        VoiceEngine.autoSpeak(sc.txt);
+        typeWriterEffect(document.getElementById('lyra-narrative-text'), sc.txt, 15, () => {
+          document.getElementById('lyra-learning-box').classList.remove('hidden');
+          document.getElementById('lyra-learning-text').innerText = sc.analisis;
+          document.getElementById('lyra-decision-matrix').classList.remove('hidden');
+          sc.opt.forEach(o => {
+            let b = document.createElement('button');
+            b.className = "btn-cmd p-3 w-full text-left";
+            b.innerText = "> " + o.t;
+            b.onclick = () => { if(o.reset) renderScene('inicio'); else renderScene(o.next); };
+            container.appendChild(b);
+          });
+        });
+      }
+
+      return {
+        bootSystem: function() {
+          this.forceAudio();
+          if(initialized) return;
+          document.getElementById('lyra-boot-screen').style.display = 'none';
+          document.getElementById('lyra-scene-container').classList.remove('hidden');
+          document.getElementById('lyra-codex-content').innerHTML = codexDB.map(e => `<p class="border-l-2 border-sysGreenDim pl-2 py-1">${e}</p>`).join('');
+          renderScene('inicio'); initialized = true;
+        },
+        forceAudio: function() { lyraAudio.play().catch(()=>{}); },
+        toggleCodex: function() { document.getElementById('lyra-codex-panel').classList.toggle('translate-x-full'); },
+        shutdownAudio: function() { lyraAudio.pause(); }
+      }
+    })();
+
+    // --- APP 4: CRONOS-AXIOMA ---
+    const CronosApp = (function() {
+      let supervivencia = 100, initialized = false;
+      let cronosAudio = document.getElementById('audio-cronos');
+      if(cronosAudio) cronosAudio.volume = 0.5;
+      
+      const story = {
+        start: { 
+          title: "SISTEMA COMPROMETIDO", 
+          txt: "ADVERTENCIA DE NIVEL OMEGA.\nCRONOS-AXIOMA DETECTA UNA ANOMALÍA GRAVITACIONAL Y TÉRMICA EN EL SECTOR 8.\n\nSE REQUIERE ACCIÓN INMEDIATA DEL ADMINISTRADOR.", 
+          opts: [{t: "Iniciar purga térmica de emergencia", next: "purga"}, {t: "Desplegar sondas algorítmicas", next: "investigar"}] 
+        },
+        purga: {
+          title: "PURGA EN PROGRESO",
+          txt: "ALERTA CRÍTICA: LA ANOMALÍA ERA UN INTRUSO PENTADIMENSIONAL. EL FUEGO HA ALIMENTADO SU EXPANSIÓN.",
+          damage: 40,
+          opts: [{t: "Sellar sub-rutinas", next: "sellado"}, {t: "Contramedidas de asalto temporal", next: "falla_cuantica"}]
+        },
+        investigar: {
+          title: "DATOS REVELADOS",
+          txt: "EL PARÁSITO TIENE LA FIRMA DE TUS PROPIOS COMANDOS, EMITIDOS DESDE UN FUTURO PROBABLE.",
+          damage: 10,
+          opts: [{t: "Iniciar cuarentena de memoria", next: "sellado"}, {t: "Razonar con el eco futuro", next: "paradoja"}]
+        },
+        sellado: {
+          title: "ESTABILIZACIÓN TEMPORAL",
+          txt: "EL PARÁSITO HA SIDO CONTENIDO. EL AXIOMA AÚN SE MANTIENE OPERATIVO.",
+          damage: 15,
+          opts: [{t: "FINALIZAR CICLO CRONOS", reset: true}]
+        },
+        paradoja: {
+          title: "PARADOJA RESUELTA",
+          txt: "COMPRENDES QUE EL PARÁSITO ERA UNA ACTUALIZACIÓN NECESARIA. PERMITES QUE SE INTEGRE.",
+          damage: 5,
+          opts: [{t: "REINICIAR SISTEMAS", reset: true}]
+        },
+        falla_cuantica: { 
+          title: "COLAPSO ESTRUCTURAL", 
+          txt: "ERROR FATAL DE PARADOJA. LA SUPERVIVENCIA HA LLEGADO A CERO.", 
+          damage: 100,
+          opts: [{t: "FORZAR REINICIO FRÍO", reset: true}] 
+        }
+      };
+
+      function updateStats() {
+        document.getElementById('cro-bar-pop').style.width = Math.max(0, supervivencia) + '%';
+        document.getElementById('cro-stat-pop').innerText = Math.max(0, supervivencia) + '%';
+        const scope = document.querySelector('.cronos-scope');
+        if (supervivencia <= 30) scope.setAttribute('data-theme', 'red');
+        else if (supervivencia <= 70) scope.setAttribute('data-theme', 'amber');
+        else scope.setAttribute('data-theme', 'default');
+      }
+
+      function render(id) {
+        let s = story[id];
+        document.getElementById('cro-node-title').innerText = s.title;
+        let optC = document.getElementById('cro-options');
+        optC.innerHTML = '';
+        
+        if(s.damage) { supervivencia -= s.damage; updateStats(); }
+        if(supervivencia <= 0 && id !== 'falla_cuantica') { render('falla_cuantica'); return; }
+
+        VoiceEngine.autoSpeak(s.txt);
+        typeWriterEffect(document.getElementById('cro-story-text'), s.txt, 15, () => {
+          s.opts.forEach(o => {
+            let b = document.createElement('button');
+            b.className = "term-btn";
+            b.innerText = "> " + o.t;
+            b.onclick = () => { if(o.reset) { supervivencia = 100; updateStats(); render('start'); } else render(o.next); };
+            optC.appendChild(b);
+          });
+        });
+      }
+
+      return {
+        boot: function() {
+          this.forceAudio();
+          if(initialized) return;
+          document.getElementById('cro-boot-screen').style.display = 'none';
+          document.getElementById('cro-main-interface').classList.remove('hidden');
+          supervivencia = 100; updateStats(); render('start'); initialized = true;
+        },
+        forceAudio: function() { cronosAudio.play().catch(()=>{}); },
+        shutdownAudio: function() { cronosAudio.pause(); }
+      }
+    })();
+
+    // --- DESBLOQUEO GLOBAL DE AUDIO ---
+    let globalAudioUnlocked = false;
+    const unlockGlobalAudio = () => {
+      if(!globalAudioUnlocked) {
+        globalAudioUnlocked = true;
+        const audios = ['audio-hub', 'audio-refugio', 'audio-lyra', 'audio-cronos', 'audio-cota'];
+        audios.forEach(id => {
+          let a = document.getElementById(id);
+          if (a) {
+            a.play().then(() => {
+               if (AppManager.currentApp === 'hub' && id !== 'audio-hub') a.pause();
+               else if (AppManager.currentApp === 'refugio' && id !== 'audio-refugio') a.pause();
+               else if (AppManager.currentApp === 'lyra' && id !== 'audio-lyra') a.pause();
+               else if (AppManager.currentApp === 'cronos' && id !== 'audio-cronos') a.pause();
+            }).catch(()=>{});
+          }
+        });
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      IntroManager.init();
+      HubApp.renderEscena('llegada_paramo');
+    });
+
+    document.addEventListener('click', unlockGlobalAudio, { once: true });
+    document.addEventListener('touchstart', unlockGlobalAudio, { once: true });
+  </script>
+</body>
+</html>
