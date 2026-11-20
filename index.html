@@ -227,9 +227,167 @@
     .cronos-scope .term-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(4px); border-left-width: 5px; box-shadow: 0 0 14px rgba(120, 255, 120, 0.18); }
     .cronos-scope .term-btn:active { transform: translateX(2px); }
     .cronos-scope .term-btn:focus-visible { outline: 2px solid var(--term-phosphor); outline-offset: 2px; }
+
+    /* =========================================
+       FEAT-003 (A) BLOQUES DE DECISIÓN: colchones y escalado
+       Pulido de espaciado/proporción (sin rediseño de tema). Garantiza que las
+       opciones nunca toquen el borde de la pantalla, escalen con clamp() y sean
+       cómodas de leer/tocar (tap target >=44px, line-height >=1.4).
+       ========================================= */
+
+    /* HUB: la columna ya está centrada (max-width 880px). Afinamos ritmo/escalado. */
+    .hub-scope .decision-heading { margin: clamp(26px, 4vh, 40px) 0 clamp(12px, 1.6vh, 18px); font-size: clamp(.8rem, 1.6vw, .9rem); line-height: 1.4; }
+    .hub-scope .opciones { gap: clamp(12px, 1.6vw, 16px); padding-inline: clamp(2px, 1vw, 8px); }
+    .hub-scope .opciones button {
+      min-height: 44px; line-height: 1.45;
+      font-size: clamp(.92rem, 1.15vw, 1rem);
+      padding: clamp(15px, 1.8vw, 18px) clamp(18px, 2vw, 22px) clamp(15px, 1.8vw, 18px) clamp(48px, 5vw, 56px);
+    }
+
+    /* REFUGIO: contenedor de opciones con colchón lateral propio y escalado. */
+    .refugio-scope #ref-opciones { gap: clamp(10px, 1.6vw, 14px); padding-inline: clamp(4px, 1.5vw, 10px); }
+    .refugio-scope #ref-opciones .btn-accion {
+      min-height: 44px; line-height: 1.45;
+      font-size: clamp(.85rem, 1.6vw, .98rem);
+      padding: clamp(13px, 1.8vw, 16px) clamp(14px, 2vw, 18px);
+    }
+
+    /* LYRA: fosforo-verde CRT; mismas garantías de tap/legibilidad. */
+    .lyra-scope #lyra-choices { gap: clamp(8px, 1.4vw, 12px); padding-inline: clamp(4px, 1.5vw, 10px); }
+    .lyra-scope #lyra-choices .btn-cmd {
+      min-height: 44px; line-height: 1.45;
+      font-size: clamp(.9rem, 1.8vw, 1.02rem);
+      padding: clamp(12px, 1.6vw, 15px) clamp(14px, 2vw, 18px);
+    }
+
+    /* CRONOS: el bezel ya deja ~2.5vw de margen (95vw). Afinamos las opciones y
+       reducimos el padding del CRT en pantallas estrechas para conservar colchón. */
+    .cronos-scope #cro-options { display: flex; flex-direction: column; gap: clamp(8px, 1.4vw, 12px); }
+    .cronos-scope .term-btn {
+      min-height: 44px; line-height: 1.45; margin-bottom: 0;
+      font-size: clamp(.9rem, 1.7vw, 1rem);
+      padding: clamp(13px, 1.8vw, 16px) clamp(14px, 2vw, 18px);
+    }
+    @media (max-width: 480px) {
+      .cronos-scope .hardware-bezel { padding: clamp(12px, 3vw, 18px); }
+      .cronos-scope .crt-container { padding: clamp(16px, 4vw, 22px); }
+    }
+
+    /* =========================================
+       FEAT-003 (B) TRANSICIONES INMERSIVAS: lenguaje futurista compartido
+       Un velo + barrido de scanline/glow reutilizado para intro->hub y
+       hub<->terminal, más un leve scale+blur del contenedor entrante.
+       Rápido (~300-600ms inter-app; intro->hub <=800ms).
+       ========================================= */
+    #layer-veil {
+      position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+      opacity: 0; background: radial-gradient(circle at center, rgba(16,185,129,.10) 0%, rgba(2,6,10,.72) 60%, rgba(2,6,10,.92) 100%);
+      transition: opacity .18s ease;
+    }
+    #layer-veil.veil-on { opacity: 1; }
+    /* Barrido de scanline/glow: una banda tenue que recorre la pantalla. */
+    #layer-veil::after {
+      content: ''; position: absolute; left: 0; right: 0; height: 26%;
+      top: -30%;
+      background: linear-gradient(180deg, transparent 0%, rgba(74,246,38,.06) 30%, rgba(129,217,208,.22) 50%, rgba(74,246,38,.06) 70%, transparent 100%);
+      mix-blend-mode: screen; opacity: 0;
+    }
+    #layer-veil.veil-on::after { animation: veil-sweep .5s ease-out forwards; }
+    @keyframes veil-sweep {
+      0% { top: -30%; opacity: 0; }
+      15% { opacity: 1; }
+      100% { top: 110%; opacity: 0; }
+    }
+    /* Entrada del contenedor: leve escala + desenfoque que se resuelve. */
+    .app-container.app-enter { animation: app-enter-fx .42s ease-out; }
+    @keyframes app-enter-fx {
+      0% { transform: scale(.985); filter: blur(5px) brightness(1.08); }
+      100% { transform: scale(1); filter: blur(0) brightness(1); }
+    }
+    /* Intro->hub: mismo lenguaje, un pelín más de glow al abrir el hub. */
+    #intro-video-overlay.fade-out #intro-video-player { animation: intro-dissolve .8s ease forwards; }
+    @keyframes intro-dissolve {
+      0% { transform: scale(1); filter: blur(0) brightness(1); }
+      100% { transform: scale(1.04); filter: blur(6px) brightness(1.25); }
+    }
+
+    /* MOVIMIENTO REDUCIDO: desactiva scale/blur/sweep; conserva solo fundidos de opacidad. */
+    @media (prefers-reduced-motion: reduce) {
+      #layer-veil { transition: opacity .12s linear; }
+      #layer-veil.veil-on::after { animation: none; opacity: 0; }
+      .app-container.app-enter { animation: none; }
+      #intro-video-overlay.fade-out #intro-video-player { animation: none; }
+    }
+
+    /* =========================================
+       FEAT-004: ANIMACIÓN FUTURISTA POST-DECISIÓN
+       Un breve "procesando la decisión" (~300-700ms) que se reproduce al pulsar
+       una opción en cualquiera de las cuatro apps, ANTES de renderizar la escena
+       siguiente. Usa un overlay efímero (#decision-pulse) tematizado por app
+       (data-flavor) y reutiliza el lenguaje futurista de FEAT-003.
+       ========================================= */
+    #decision-pulse {
+      position: fixed; inset: 0; z-index: 9200; pointer-events: none; opacity: 0;
+      --dp-accent: #10b981;
+    }
+    #decision-pulse.dp-on { opacity: 1; }
+    /* Hub = esmeralda/elegante: un destello/latido suave y un barrido limpio. */
+    #decision-pulse[data-flavor="hub"] { --dp-accent: #10b981; }
+    /* Terminales = más CRT/glitch. */
+    #decision-pulse[data-flavor="refugio"] { --dp-accent: #d4a373; }
+    #decision-pulse[data-flavor="lyra"]    { --dp-accent: #4af626; }
+    #decision-pulse[data-flavor="cronos"]  { --dp-accent: var(--term-phosphor, #e2e8f0); }
+
+    /* Capa 1: velo/latido de color del tema. */
+    #decision-pulse::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at center, color-mix(in srgb, var(--dp-accent) 16%, transparent) 0%, transparent 62%);
+      opacity: 0;
+    }
+    #decision-pulse.dp-on::before { animation: dp-glow .46s ease-out forwards; }
+    @keyframes dp-glow {
+      0%   { opacity: 0; }
+      35%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    /* Capa 2: banda de scanline/barrido de datos que recorre la pantalla. */
+    #decision-pulse::after {
+      content: ''; position: absolute; left: 0; right: 0; height: 18%; top: -24%;
+      background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--dp-accent) 10%, transparent) 30%, color-mix(in srgb, var(--dp-accent) 55%, transparent) 50%, color-mix(in srgb, var(--dp-accent) 10%, transparent) 70%, transparent 100%);
+      mix-blend-mode: screen; opacity: 0;
+    }
+    #decision-pulse.dp-on::after { animation: dp-sweep .5s ease-out forwards; }
+    @keyframes dp-sweep {
+      0%   { top: -24%; opacity: 0; }
+      12%  { opacity: 1; }
+      100% { top: 112%; opacity: 0; }
+    }
+    /* Variante CRT/glitch para terminales: añade un parpadeo de "data-stream". */
+    #decision-pulse.dp-glitch.dp-on::before { animation: dp-glow-glitch .5s steps(6, end) forwards; }
+    @keyframes dp-glow-glitch {
+      0%   { opacity: 0; transform: translateX(0); }
+      20%  { opacity: 1; transform: translateX(-2px); }
+      40%  { opacity: .55; transform: translateX(2px); }
+      60%  { opacity: 1; transform: translateX(-1px); }
+      80%  { opacity: .4; transform: translateX(1px); }
+      100% { opacity: 0; transform: translateX(0); }
+    }
+
+    /* MOVIMIENTO REDUCIDO: el pulso post-decisión se salta la animación. */
+    @media (prefers-reduced-motion: reduce) {
+      #decision-pulse.dp-on::before,
+      #decision-pulse.dp-glitch.dp-on::before,
+      #decision-pulse.dp-on::after { animation: none; opacity: 0; }
+    }
   </style>
 </head>
 <body>
+
+  <!-- VELO DE TRANSICIÓN COMPARTIDO (lenguaje futurista para intro->hub y hub<->terminal) -->
+  <div id="layer-veil" aria-hidden="true"></div>
+
+  <!-- PULSO POST-DECISIÓN COMPARTIDO (FEAT-004): overlay tematizado por app al elegir una opción -->
+  <div id="decision-pulse" aria-hidden="true"></div>
 
   <!-- PANTALLA DE VIDEO INTRODUCTORIO -->
   <div id="intro-video-overlay">
@@ -469,6 +627,16 @@
 
         if (this.video) this.video.pause();
         this.overlay.classList.add('fade-out');
+        // Mismo velo/barrido futurista que usan los micrositios, para que el paso
+        // del video al Hub se sienta parte del mismo lenguaje visual.
+        AppManager.pulseVeil();
+        const hub = document.getElementById('hub-container');
+        if (hub) {
+          hub.classList.remove('app-enter');
+          void hub.offsetWidth;
+          hub.classList.add('app-enter');
+          setTimeout(() => hub.classList.remove('app-enter'), 460);
+        }
         setTimeout(() => {
           this.overlay.style.display = 'none';
         }, 800);
@@ -621,6 +789,60 @@
       apps: ['hub', 'refugio', 'lyra', 'cronos'],
       transitioning: false,
 
+      // Dispara el velo/barrido futurista compartido. Es puramente visual: no toca
+      // audio ni la guardia de reentrada, así que nunca puede bloquear la navegación.
+      pulseVeil: function() {
+        const veil = document.getElementById('layer-veil');
+        if (!veil) return;
+        veil.classList.remove('veil-on');
+        void veil.offsetWidth; // reflow para reiniciar el barrido
+        veil.classList.add('veil-on');
+        setTimeout(() => veil.classList.remove('veil-on'), 520);
+      },
+
+      // FEAT-004: guardia en vuelo para la animación post-decisión. Es independiente
+      // de 'transitioning' (que protege el cruce entre apps) para no interferir con la
+      // navegación hub<->terminal, pero cumple el mismo contrato: ignora clics nuevos
+      // mientras una animación+render está pendiente y SIEMPRE se libera.
+      decisionPending: false,
+
+      // runDecisionTransition(flavor, done): reproduce un breve pulso futurista
+      // tematizado ('hub' | 'refugio' | 'lyra' | 'cronos') y después invoca done(),
+      // que realiza el render real de la escena siguiente. Coalesce clics rápidos:
+      // si ya hay una decisión en vuelo, ignora el nuevo clic (no apila renders).
+      // Honra prefers-reduced-motion acortando el retardo. La guardia se libera
+      // SIEMPRE mediante un timeout que siempre dispara + try/finally en done().
+      runDecisionTransition: function(flavor, done) {
+        if (this.decisionPending) return;        // coalesce: ignora clics solapados
+        this.decisionPending = true;
+
+        const terminals = { refugio: 1, lyra: 1, cronos: 1 };
+        const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const pulse = document.getElementById('decision-pulse');
+
+        if (pulse && !reduced) {
+          pulse.setAttribute('data-flavor', flavor || 'hub');
+          pulse.classList.toggle('dp-glitch', !!terminals[flavor]); // CRT/glitch en terminales
+          pulse.classList.remove('dp-on');
+          void pulse.offsetWidth;                // reflow para reiniciar la animación
+          pulse.classList.add('dp-on');
+        }
+
+        // Duración del beat: ~460ms normal, muy corto bajo movimiento reducido.
+        const delay = reduced ? 60 : 460;
+
+        setTimeout(() => {
+          // Ejecutar el render real DENTRO de try/finally para que la guardia se
+          // libere aunque el render lance una excepción (nunca bloquea las opciones).
+          try {
+            if (typeof done === 'function') done();
+          } finally {
+            if (pulse) pulse.classList.remove('dp-on', 'dp-glitch');
+            this.decisionPending = false;
+          }
+        }, delay);
+      },
+
       launchApp: function(appId) {
         // Guardia de reentrada: ignorar clics nuevos mientras un fundido está en curso
         // (evita doble boot/forceAudio del mismo micrositio por clics <260ms).
@@ -647,11 +869,17 @@
             c.classList.remove('active', 'app-fade-out');
           });
           // Mostrar el nuevo contenedor arrancando invisible, luego desvanecer hacia 1.
+          incoming.classList.remove('app-enter');
           incoming.classList.add('active', 'app-fade-out');
           incoming.scrollTop = 0;
           // Forzar reflow para que la transición de opacidad se dispare.
           void incoming.offsetWidth;
-          requestAnimationFrame(() => incoming.classList.remove('app-fade-out'));
+          requestAnimationFrame(() => {
+            incoming.classList.remove('app-fade-out');
+            // Leve scale+blur de entrada (lenguaje futurista compartido).
+            incoming.classList.add('app-enter');
+            setTimeout(() => incoming.classList.remove('app-enter'), 460);
+          });
 
           document.getElementById('btn-global-back').style.display = (appId === 'hub') ? 'none' : 'flex';
 
@@ -669,6 +897,9 @@
             this.transitioning = false;
           }
         };
+
+        // Velo/barrido futurista compartido: se dispara al iniciar el cruce.
+        this.pulseVeil();
 
         // Desvanecer el contenedor saliente y, al terminar, activar el nuevo.
         if (outgoing && outgoing !== incoming && outgoing.classList.contains('active')) {
@@ -793,7 +1024,7 @@
           
           let htmlOpc = `<div class="decision-heading">Elige cómo continuar</div><div class="opciones">`;
           escena.opciones.forEach((op, idx) => {
-            htmlOpc += `<button type="button" onclick="HubApp.renderEscena('${op.destino}')"><span>0${idx+1}</span>${op.texto}</button>`;
+            htmlOpc += `<button type="button" onclick="HubApp.elegirOpcion('${op.destino}')"><span>0${idx+1}</span>${op.texto}</button>`;
           });
           htmlOpc += `</div>`;
 
@@ -808,6 +1039,14 @@
           
           let textoLimpio = escena.texto.replace(/<[^>]*>?/gm, '');
           VoiceEngine.autoSpeak(textoLimpio);
+        },
+        // FEAT-004: navegación por clic de opción -> pulso futurista (esmeralda) y
+        // LUEGO render del destino. El SFX select() ya se dispara en el listener de
+        // clic de la opción; aquí solo enrutamos la navegación por la animación.
+        // El render inicial (DOMContentLoaded, progress-step, returnToHub) sigue
+        // llamando a renderEscena directamente, sin animación.
+        elegirOpcion: function(destino) {
+          AppManager.runDecisionTransition('hub', () => this.renderEscena(destino));
         },
         toggleAmbient: function() {
           let btn = document.getElementById('btn-ambient-audio');
@@ -938,14 +1177,18 @@
             btn.addEventListener('mouseenter', () => SfxEngine.hover());
             btn.onclick = () => {
               SfxEngine.select();
-              if(op.reset) { RefugioApp.reset(); return; }
-              if(op.c.a) estado.agua = Math.max(0, Math.min(100, estado.agua + op.c.a));
-              if(op.c.p) estado.polvo = Math.max(0, Math.min(100, estado.polvo + op.c.p));
-              if(op.c.m) estado.moral = Math.max(0, Math.min(100, estado.moral + op.c.m));
-              renderBars();
-              document.getElementById('ref-opciones').classList.add('seccion-oculta');
-              document.getElementById('ref-continuar').classList.remove('seccion-oculta');
-              document.getElementById('ref-continuar').querySelector('button').onclick = () => loadScene(op.target);
+              // FEAT-004: tras el SFX de selección, un breve beat CRT/arena y DESPUÉS
+              // el flujo existente (matemática de stats, renderBars y paso Proceder).
+              AppManager.runDecisionTransition('refugio', () => {
+                if(op.reset) { RefugioApp.reset(); return; }
+                if(op.c.a) estado.agua = Math.max(0, Math.min(100, estado.agua + op.c.a));
+                if(op.c.p) estado.polvo = Math.max(0, Math.min(100, estado.polvo + op.c.p));
+                if(op.c.m) estado.moral = Math.max(0, Math.min(100, estado.moral + op.c.m));
+                renderBars();
+                document.getElementById('ref-opciones').classList.add('seccion-oculta');
+                document.getElementById('ref-continuar').classList.remove('seccion-oculta');
+                document.getElementById('ref-continuar').querySelector('button').onclick = () => loadScene(op.target);
+              });
             };
             opContainer.appendChild(btn);
           });
@@ -1023,7 +1266,7 @@
             b.className = "btn-cmd p-3 w-full text-left";
             b.innerText = "> " + o.t;
             b.addEventListener('mouseenter', () => SfxEngine.hover());
-            b.onclick = () => { SfxEngine.select(); if(o.reset) renderScene('inicio'); else renderScene(o.next); };
+            b.onclick = () => { SfxEngine.select(); AppManager.runDecisionTransition('lyra', () => { if(o.reset) renderScene('inicio'); else renderScene(o.next); }); };
             container.appendChild(b);
           });
         }, () => SfxEngine.typing('sine'));
@@ -1113,7 +1356,7 @@
             b.className = "term-btn";
             b.innerText = "> " + o.t;
             b.addEventListener('mouseenter', () => SfxEngine.hover());
-            b.onclick = () => { SfxEngine.select(); if(o.reset) { supervivencia = 100; updateStats(); render('start'); } else render(o.next); };
+            b.onclick = () => { SfxEngine.select(); AppManager.runDecisionTransition('cronos', () => { if(o.reset) { supervivencia = 100; updateStats(); render('start'); } else render(o.next); }); };
             optC.appendChild(b);
           });
         }, () => SfxEngine.typing('sawtooth'));
