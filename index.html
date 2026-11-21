@@ -419,6 +419,48 @@
       #hub-container .hub-start-reading:hover { border-color: var(--accent); background: rgba(16, 42, 34, 0.9); color: var(--accent-strong); }
       #hub-container .hub-start-reading:active { background: rgba(6, 16, 13, 0.98); }
       #hub-container .hub-start-reading:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      /* FEAT-001 (fix 1): espejo de pistas/variables EN EL FLUJO de lectura móvil.
+         En escritorio está display:none; aquí se muestra como bloque en flujo normal,
+         de modo que sigue a la narrativa/opciones y hace scroll con la página (los
+         originales #choice-feedback/#lista-recompensas siguen en el cajón, que está
+         cerrado por defecto y por eso quedaban fuera de pantalla). Prefijo #hub-container
+         (1,1,0) para ganar a la regla base. Se reserva margen inferior holgado para no
+         quedar bajo la franja de controles fija ni la pastilla "Comenzar lectura". */
+      #hub-container .hub-mobile-guidance {
+        display: block; width: 100%; max-width: 880px; margin: 22px auto 0;
+        box-sizing: border-box; padding: 14px 16px;
+        /* Deja aire bajo el bloque para que no lo tape la franja de controles fija. */
+        margin-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+        background: rgba(8, 22, 17, 0.72);
+        border: 1px solid rgba(16, 185, 129, 0.45);
+        border-left: 3px solid var(--accent);
+        border-radius: 0 8px 8px 0;
+        -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.38);
+      }
+      #hub-container .hub-mobile-guidance .hub-mobile-kicker {
+        margin: 0 0 8px; font-family: 'DM Mono', monospace;
+        font-size: var(--fs-micro); letter-spacing: var(--tracking-label);
+        text-transform: uppercase; color: var(--accent); opacity: .9;
+      }
+      #hub-container .hub-mobile-guidance .hub-mobile-feedback {
+        margin: 0; padding: 9px 11px; font-size: 0.86rem; line-height: 1.55;
+        color: var(--muted); border-left: 2px solid var(--cyan);
+        background: rgba(129, 217, 208, .07); border-radius: 0 6px 6px 0;
+      }
+      #hub-container .hub-mobile-guidance .hub-mobile-feedback:empty { display: none; }
+      /* Estado de aviso: acento ámbar/rojo claramente distinto del normal (cian). */
+      #hub-container .hub-mobile-guidance .hub-mobile-feedback.is-warning {
+        border-left-color: var(--error); background: rgba(239, 68, 68, .08); color: #f4b8b8;
+      }
+      #hub-container .hub-mobile-guidance .hub-mobile-rewards {
+        list-style: none; padding: 0; margin: 12px 0 0;
+        color: var(--accent); font-weight: 600;
+      }
+      #hub-container .hub-mobile-guidance .hub-mobile-rewards li {
+        margin: 0 0 7px; font-size: 0.9rem; line-height: 1.4;
+      }
     }
     /* PORTRAIT / pantallas verticales: el video se muestra ENTERO (contain) sobre el
        El video es 16:9 (horizontal). En vertical, 'contain' lo encogía a una banda
@@ -590,6 +632,28 @@
     }
 
     /* =========================================
+       FEAT-001 (fix 4): TERMINAL CRONOS EN "VISTA DE ESCRITORIO" SOBRE MÓVIL.
+       Cuando un teléfono pide "ver como escritorio", el viewport reporta un ANCHO
+       grande, así que las relajaciones móviles de @media(max-width:850px) NO se
+       activan: el bezel fijo de 88vh queda centrado en un viewport MUY BAJO y puede
+       recortar #cro-options. Esta consulta se dispara solo en ANCHO de escritorio
+       (min-width:851px) pero ALTO corto (max-height:620px): relaja el bezel/CRT para
+       que crezcan con el contenido y el #cronos-container (su .app-container tiene
+       overflow-y:auto) scrollee como una sola página, dejando #cro-options alcanzable.
+       En escritorios reales (altos) NO se dispara: mantienen el bezel 88vh con scroll
+       interno del CRT. Scope por #cronos-container para ganar especificidad.
+       ========================================= */
+    @media (min-width: 851px) and (max-height: 620px) {
+      /* El bezel empieza arriba (no centrado) para que su alto crezca con el contenido. */
+      #cronos-container.cronos-scope,
+      .app-container.active.cronos-scope { align-items: flex-start; }
+      #cronos-container .hardware-bezel { height: auto; max-height: none; min-height: 0; }
+      #cronos-container .crt-container { height: auto; overflow: visible; }
+      /* La caja de relato deja de scrollear internamente; #cro-options cae en flujo. */
+      #cronos-container #cro-story-text { height: auto; min-height: 0; overflow: visible; }
+    }
+
+    /* =========================================
        1. HUB CENTRAL (PÁRAMO OMEGA)
        ========================================= */
     .hub-scope {
@@ -658,6 +722,11 @@
        solo se muestra dentro de @media (max-width:850px) más abajo. Estética consola:
        DM Mono, borde hairline fuerte, acento esmeralda, radio cohesivo. */
     .hub-scope .hub-start-reading { display: none; }
+    /* FEAT-001 (fix 1): el espejo móvil de pistas/variables está OCULTO en escritorio
+       (la barra lateral ya muestra #choice-feedback y #lista-recompensas). Solo se
+       revela dentro de @media (max-width:850px) más abajo, con prefijo #hub-container
+       para ganar especificidad (lección documentada). */
+    .hub-scope .hub-mobile-guidance { display: none; }
     .hub-scope .sidebar { position: sticky; z-index: 10; top: 0; right: 0; width: 100%; height: 100vh; height: 100dvh; box-sizing: border-box; padding: var(--space-5) 22px; overflow-y: auto; gap: 28px; font-size: .88rem; display: flex; flex-direction: column; border-left: 1px solid var(--hair);}
     .hub-scope .inventario-box { border-top: 1px solid var(--hair); padding-top: var(--space-4); }
     .hub-scope .choice-feedback {
@@ -901,6 +970,10 @@
     /* Destello breve de encendido de CRT al aparecer el panel (one-shot): un pop de
        brillo + leve scaleY que se asienta. */
     .hub-hint.is-visible { animation: hubHintPowerOn .55s var(--ease, cubic-bezier(.22,.61,.36,1)) both; }
+    /* FEAT-001 (fix 5): una vez descartada, la consola de pista queda RETIRADA de
+       forma permanente en la sesión. Este estado gana a cualquier reactivación por
+       toggle de clase o por la animación de cascada al volver al hub. */
+    .hub-hint.hub-hint-retired { display: none !important; animation: none !important; opacity: 0 !important; }
     .hub-hint .hub-hint-prompt { color: #10b981; margin-right: 6px; }
     .hub-hint .hub-hint-text { color: #26d07c; }
     .hub-hint .hub-hint-cursor {
@@ -1146,6 +1219,10 @@
     .cascade > *:nth-child(6) { animation-delay: 450ms; }
     .cascade > *:nth-child(7) { animation-delay: 540ms; }
     .cascade > *:nth-child(n+8) { animation-delay: 600ms; }
+    /* FEAT-001 (fix 5): el hint inicial es hijo directo de #hub-container, así que
+       al volver al hub la cascada (.cascade > *, con `both`) forzaba su opacidad a 1
+       y lo "revivía". Lo excluimos de la cascada para que nunca reaparezca por esa vía. */
+    .cascade > #hub-hint { animation: none !important; }
 
     /* MOVIMIENTO REDUCIDO: desactiva scale/blur/sweep; conserva solo fundidos de opacidad. */
     @media (prefers-reduced-motion: reduce) {
@@ -1904,6 +1981,19 @@
     <div id="hub-drawer-scrim" class="hub-drawer-scrim" hidden></div>
     <div class="narrative-area" id="narrative-area">
       <div id="contenido-escena"></div>
+      <!-- FEAT-001 (fix 1, solo móvil): espejo en el FLUJO de lectura de las pistas de
+           elección (#choice-feedback) y los logros/"Variables Recuperadas"
+           (#lista-recompensas), que en móvil quedan atrapados en el cajón off-canvas
+           CERRADO y por tanto fuera de pantalla en la primera escena. Hermano estático
+           de #contenido-escena (no se destruye al re-renderizar la escena). Usa IDs
+           NUEVOS (hub-mobile-*) para NO duplicar los ids canónicos del cajón, que
+           siguen intactos en la barra lateral de escritorio. display:none en
+           escritorio; solo visible dentro de @media (max-width:850px). -->
+      <section id="hub-mobile-guidance" class="hub-mobile-guidance" aria-live="polite">
+        <p class="hub-mobile-kicker">Pistas y variables</p>
+        <p id="hub-mobile-feedback" class="hub-mobile-feedback"></p>
+        <ul id="hub-mobile-rewards" class="hub-mobile-rewards"></ul>
+      </section>
       <!-- RETOUCH 1 (solo móvil): afordancia "Comenzar lectura". Vive estática como
            hermana de #contenido-escena (que se reconstruye en cada render), así que
            NO se destruye al cambiar de escena. En escritorio queda display:none. En
@@ -2341,6 +2431,11 @@
           if (dismissTo) { clearTimeout(dismissTo); dismissTo = null; }
           if (revealTo) { clearTimeout(revealTo); revealTo = null; }
           hint.classList.remove('is-visible');
+          // FEAT-001 (fix 5): marcador PERMANENTE de retiro. La regla CSS
+          // `.hub-hint.hub-hint-retired { display:none!important; opacity:0!important }`
+          // y la exclusión `.cascade > #hub-hint` garantizan que ni la animación de
+          // cascada al volver al hub ni ningún toggle de clase puedan revivirlo.
+          hint.classList.add('hub-hint-retired');
           // Ocultar de forma PERMANENTE tras el fundido de salida: así el aviso
           // nunca reaparece al volver al hub desde un micrositio (las transiciones
           // /cascada no pueden revivirlo porque queda fuera de renderizado).
@@ -2513,12 +2608,31 @@
           btnElement.innerHTML = this.autoPlay ? '<i class="ph ph-speaker-high"></i> Narrador: ON' : '<i class="ph ph-speaker-slash"></i> Narrador: OFF';
           btnElement.classList.toggle('is-on', this.autoPlay);
         }
+        // FEAT-001 (fix 2b): al ENCENDER el narrador mientras el hub está activo, lee
+        // de inmediato la escena vigente (gesto de usuario => speechSynthesis permitido),
+        // en vez de esperar al próximo render. stop() ya se llamó arriba, y speak ->
+        // speakSequence vuelve a llamar stop(), así que no hay solape ni doble lectura.
+        // Al APAGAR, el stop() de arriba deja todo en silencio. No se fuerza narración
+        // para quien tiene el toggle en OFF (se respeta la preferencia).
+        if (this.autoPlay && typeof AppManager !== 'undefined' && AppManager.currentApp === 'hub') {
+          const copy = document.querySelector('#contenido-escena .scene-copy');
+          if (copy) { try { this.speak(copy.innerText); } catch (e) {} }
+        }
       },
       normalize: function(text) {
         return String(text)
           .replace(/<[^>]*>?/gm, ' ')        // quitar etiquetas HTML
           .replace(/[_]+/g, ' ')              // guiones bajos a espacios
           .replace(/\s*\n\s*/g, ' ')          // saltos de línea a espacio
+          // FEAT-001 (fix 3): neutralizar símbolos que algunas voces LEEN EN VOZ ALTA
+          // ("punto medio", "mayor que", "asterisco", etc.) convirtiéndolos en espacio,
+          // es decir en una pausa, NO en una palabra. Se CONSERVAN , . ; : ! ? ¿ ¡
+          // para que el motor siga marcando pausas de frase/cláusula.
+          .replace(/::+/g, ' ')                       // secuencias '::' (p.ej. "P\u00c1RAMO-OMEGA ::")
+          .replace(/[\u00b7\u2022]/g, ' ')            // punto medio '\u00b7' y vi\u00f1eta '\u2022'
+          .replace(/[<>*#|~^=`]/g, ' ')               // < > * # | ~ ^ = y backtick
+          .replace(/[\u2014\u2013]/g, ' ')            // raya '\u2014' y semirraya '\u2013'
+          .replace(/(^|\s)-+(?=\s|$)/g, '$1 ')        // guiones sueltos rodeados de espacios
           .replace(/([.!?;:])(?=\S)/g, '$1 ') // asegurar espacio tras puntuación
           .replace(/[ \t]{2,}/g, ' ')         // colapsar espacios múltiples
           .replace(/([.!?])\s/g, '$1  ')      // pausa ligera tras fin de frase
@@ -3078,6 +3192,19 @@
             fb.textContent = escena.feedback || '';
             fb.classList.toggle('is-warning', escena.feedbackTono === 'warning');
           }
+          // FEAT-001 (fix 1): espeja el mismo texto/estado de aviso en el bloque móvil
+          // del flujo de lectura (#hub-mobile-feedback). Mismo contenido y mismo toggle
+          // is-warning que #choice-feedback; no toca el id canónico ni el inventario.
+          const fbMobile = document.getElementById('hub-mobile-feedback');
+          if (fbMobile) {
+            fbMobile.textContent = escena.feedback || '';
+            fbMobile.classList.toggle('is-warning', escena.feedbackTono === 'warning');
+          }
+          // FEAT-001 (fix 1): asegura que el espejo de logros refleje el estado actual
+          // en CADA render (incluido el primer paint de 'llegada_paramo', que no gana
+          // recompensa ni limpia inventario y por tanto no invocaría actualizarInventario).
+          // Es idempotente y barato: reescribe lista canónica + espejo desde el array.
+          this.actualizarInventario();
 
           let html = `<div class="topbar"><div class="brand"><span class="brand-mark"></span>Páramo Omega</div><div class="status">Simulación Activa</div></div>`;
           if (id === 'llegada_paramo') html += `<header class="story-header"><h1>El dilema del ecosistema sintético</h1><p>Historia interactiva y terminal de acceso cruzado.</p></header>`;
@@ -3210,6 +3337,16 @@
           const lista = document.getElementById('lista-recompensas');
           if(inventario.length===0) lista.innerHTML = '<li>Sin datos en caché...</li>';
           else lista.innerHTML = inventario.map(i => `<li>✦ ${i}</li>`).join('');
+          // FEAT-001 (fix 1): reconstruye el espejo móvil (#hub-mobile-rewards) desde el
+          // MISMO array inventario, con idéntica marca "✦ item" y mismo estado vacío.
+          // actualizarInventario ya se llama al ganar recompensa y al limpiar inventario,
+          // así que el espejo se mantiene sincronizado; en el primer render muestra el
+          // estado vacío. No altera el id canónico #lista-recompensas.
+          const listaMobile = document.getElementById('hub-mobile-rewards');
+          if (listaMobile) {
+            if(inventario.length===0) listaMobile.innerHTML = '<li>Sin datos en caché...</li>';
+            else listaMobile.innerHTML = inventario.map(i => `<li>✦ ${i}</li>`).join('');
+          }
         }
       };
     })();
@@ -3743,6 +3880,14 @@
           const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
           try { SfxEngine.select(); } catch (e) {}
+          // FEAT-001 (fix 2): además del scroll, ARRANCA la narración de la escena
+          // vigente. El clic es un gesto de usuario, así que speechSynthesis queda
+          // habilitado (clave en móvil, donde la narración automática no dispara sin
+          // interacción). Usa la MISMA fuente de texto que escucharEscena()/autoSpeak
+          // (el cuerpo .scene-copy). VoiceEngine.speak -> speakSequence llama stop()
+          // primero, de modo que nunca se solapa ni se duplica con una lectura previa.
+          const copy = document.querySelector('#contenido-escena .scene-copy');
+          if (copy) { try { VoiceEngine.speak(copy.innerText); } catch (e) {} }
         });
 
         // La pastilla es una pista de "empezar": una vez que la lectura arranca (se ha
