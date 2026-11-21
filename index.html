@@ -632,25 +632,60 @@
     }
 
     /* =========================================
-       FEAT-001 (fix 4): TERMINAL CRONOS EN "VISTA DE ESCRITORIO" SOBRE MÓVIL.
-       Cuando un teléfono pide "ver como escritorio", el viewport reporta un ANCHO
-       grande, así que las relajaciones móviles de @media(max-width:850px) NO se
-       activan: el bezel fijo de 88vh queda centrado en un viewport MUY BAJO y puede
-       recortar #cro-options. Esta consulta se dispara solo en ANCHO de escritorio
-       (min-width:851px) pero ALTO corto (max-height:620px): relaja el bezel/CRT para
-       que crezcan con el contenido y el #cronos-container (su .app-container tiene
-       overflow-y:auto) scrollee como una sola página, dejando #cro-options alcanzable.
-       En escritorios reales (altos) NO se dispara: mantienen el bezel 88vh con scroll
-       interno del CRT. Scope por #cronos-container para ganar especificidad.
+       FEAT-001 (fix 4, AMPLIADO): TERMINALES EN "VISTA DE ESCRITORIO" SOBRE MÓVIL.
+       Cuando un teléfono pide "ver como escritorio" (Chrome: "Sitio de escritorio"),
+       el viewport reporta un ANCHO de escritorio (~980px) pero puede ser ALTO
+       (p.ej. 980x1600). Entonces las relajaciones de @media(max-width:850px) NO se
+       activan y se aplica el CSS de escritorio: el bezel Cronos de 88vh llena la
+       pantalla, el .crt-container tiene scroll ANIDADO y #cro-options queda atrapado
+       al fondo de ese scroll interno (idem Lyra/Refugio con sus paneles de alto fijo).
+       El fix previo sólo cubría ALTO corto (max-height:620px), que NO dispara en un
+       viewport de escritorio-sobre-móvil ALTO.
+       SEÑAL FIABLE: un dispositivo táctil que renderiza el layout de escritorio es
+       "pointer: coarse" (pantalla táctil). Un escritorio real con ratón es
+       "pointer: fine" y NO coincide, así que conserva el look CRT de alto fijo.
+       Combinamos ambas condiciones (coarse-pointer O ventana corta) y aplicamos las
+       MISMAS relajaciones de scroll único a los TRES micrositios, con scope por id
+       (#cronos/#lyra/#refugio-container) para ganar especificidad. En escritorios
+       reales (pointer:fine, altos) NINGUNA de estas consultas dispara: mantienen el
+       bezel 88vh con scroll interno del CRT, intacto.
        ========================================= */
-    @media (min-width: 851px) and (max-height: 620px) {
+    @media (min-width: 851px) and (pointer: coarse),
+           (min-width: 851px) and (max-height: 620px) {
+      /* --- CRONOS-AXIOMA --- */
       /* El bezel empieza arriba (no centrado) para que su alto crezca con el contenido. */
       #cronos-container.cronos-scope,
       .app-container.active.cronos-scope { align-items: flex-start; }
+      /* El bezel deja de medir 88vh y crece con el contenido (se conservan
+         borde/padding/border-radius de la base). */
       #cronos-container .hardware-bezel { height: auto; max-height: none; min-height: 0; }
+      /* El CRT deja de tener su propio scroll anidado: fluye con el contenido. */
       #cronos-container .crt-container { height: auto; overflow: visible; }
       /* La caja de relato deja de scrollear internamente; #cro-options cae en flujo. */
       #cronos-container #cro-story-text { height: auto; min-height: 0; overflow: visible; }
+
+      /* --- ARCHIVO LYRA --- */
+      /* La escena deja de anclarse al viewport (flex-grow) y crece con su contenido;
+         la narrativa CRT deja su scroll interno, así #lyra-decision-matrix /
+         #lyra-choices caen en flujo y se alcanzan con el scroll del contenedor. */
+      #lyra-container #lyra-scene-container { flex: none; height: auto; min-height: 0; }
+      #lyra-container #lyra-narrative-text { flex: none; height: auto; min-height: 0; overflow: visible; }
+
+      /* --- REFUGIO ZERO --- */
+      /* El <main> y el panel dejan de fijarse al viewport; la caja de narrativa
+         (Tailwind overflow-y-auto + flex-grow) se expande en línea, así
+         #ref-opciones cae en flujo y se alcanza con el scroll del contenedor. */
+      #refugio-container > main { flex: 0 0 auto; height: auto; min-height: 0; }
+      #refugio-container .panel-borde { flex: none; height: auto; min-height: 0; }
+      #refugio-container .panel-borde > .overflow-y-auto { flex: none; height: auto; min-height: 0; overflow: visible; }
+
+      /* Colchón inferior para que la última opción libre la barra de controles fija
+         (misma reserva que el fix de @media max-width:850px). */
+      #refugio-container, #lyra-container, #cronos-container {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+      }
+      .app-container { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     }
 
     /* =========================================
