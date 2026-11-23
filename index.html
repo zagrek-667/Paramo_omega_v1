@@ -2487,7 +2487,14 @@
         let typeInt = null;
         let dismissTo = null;
         let revealTo = null;
+        // Garantiza que la señal ready/salida suene EXACTAMENTE UNA VEZ por ciclo de
+        // vida de la pista: si el tecleo ya la disparó al terminar, el descarte NO
+        // vuelve a sonar; si el usuario cierra antes de terminar, suena aquí.
+        let armedChimePlayed = false;
         const dismiss = () => {
+          // Confirmación ready/salida al cerrar manualmente, sólo si aún no sonó al
+          // completar el tecleo (evita doble disparo). Sutil, sólo con audio desbloqueado.
+          if (!armedChimePlayed && SfxEngine.ready) { SfxEngine.ready2(); armedChimePlayed = true; }
           if (typeInt) { clearInterval(typeInt); typeInt = null; }
           if (dismissTo) { clearTimeout(dismissTo); dismissTo = null; }
           if (revealTo) { clearTimeout(revealTo); revealTo = null; }
@@ -2514,6 +2521,9 @@
           revealTo = setTimeout(() => {
             hint.classList.add('is-visible');
             if (SfxEngine.ready) SfxEngine.boot();
+            // Sin tecleo aquí (texto instantáneo): basta una sola confirmación
+            // ready/salida tras el encendido para que también se perciba "armado".
+            if (SfxEngine.ready) { SfxEngine.ready2(); armedChimePlayed = true; }
           }, 450);
           dismissTo = setTimeout(dismiss, 7000);
           return;
@@ -2531,15 +2541,20 @@
           typeInt = setInterval(() => {
             if (i >= fullText.length) {
               clearInterval(typeInt); typeInt = null;
+              // Confirmación ready/salida al terminar el tecleo: narrador + ambiente
+              // listos. Una sola vez por ciclo (marca el flag para que dismiss no repita).
+              if (SfxEngine.ready) { SfxEngine.ready2(); armedChimePlayed = true; }
               // Autodescarte ~9.5s DESPUÉS de terminar de teclear (no solapado).
               dismissTo = setTimeout(dismiss, 9500);
               return;
             }
-            if (textEl) textEl.textContent += fullText.charAt(i);
+            const ch = fullText.charAt(i);
+            if (textEl) textEl.textContent += ch;
             i++;
-            // Bit sonoro de tecleo MUY sutil, sólo si el audio ya está desbloqueado
-            // (nunca se fuerza unlock) y de forma intermitente para no saturar.
-            if (SfxEngine.ready && (i % 2 === 0)) SfxEngine.tick();
+            // Tecleo de consola audible carácter a carácter (timbre 'square' de
+            // terminal), sólo si el audio ya está desbloqueado (nunca fuerza unlock).
+            // No suena en espacios, para que se perciba como pulsaciones de tecla.
+            if (SfxEngine.ready && ch !== ' ') SfxEngine.typing('square');
           }, SPEED);
         }, 450);
       }
@@ -2652,6 +2667,19 @@
         this._blip(165, 0.30, 0.08, 'sine');
         // Armónico breve de confirmación, de la misma familia tonal CRT.
         this._blip(330, 0.18, 0.05, 'triangle');
+      },
+      // Confirmación ready/salida: dos notas ascendentes MUY breves que señalan que
+      // el narrador y el ambiente ya quedaron armados ("narrador + ambiente listo").
+      // Reutiliza _ensure()/_blip(), así que hereda el gating de unlock+master.gain
+      // y es NO-OP mientras !this.ready (nunca suena antes del gesto del usuario).
+      // De la misma familia tonal esmeralda/CRT y ganancia baja (<=0.12) para que
+      // sea una señal sutil, no un aviso. No toca master.gain.
+      ready2: function() {
+        this._ensure();
+        if (!this.ready) return;
+        // Dos tonos que ascienden: "armado / listo".
+        this._blip(660, 0.09, 0.11, 'triangle');
+        this._blip(990, 0.12, 0.09, 'triangle');
       }
     };
 
@@ -3181,63 +3209,63 @@
       
       const grafoNarrativo = {
         llegada_paramo: {
-          titulo: "La montaña que recuerda el agua", 
-          feedback: "Aquí el sistema responde mejor al entendimiento que al empujón. Antes de actuar, mira bien qué camino deja puertas abiertas.",
-          texto: "<p>Llego al Páramo de Sumapaz y la neblina lo cubre todo, enredada en las antenas oxidadas que nadie volvió a tocar. La central Páramo-Omega selló sus compuertas hidro-lógicas. Su inteligencia artificial, que un día crearon para cuidar el ecosistema, sacó sus cuentas: el consumo de la megaciudad de abajo es insostenible, y ahora nos mira a nosotros como a un 'patógeno crítico'.</p><p>Frente a mí late la gran consola de obsidiana sintética. Pide un código de anulación manual, pero lo sé: si fuerzo el sistema, puedo reventar los acuíferos que duermen bajo mis pies.</p>",
+          titulo: "La montaña que todavía recuerda el agua", 
+          feedback: "Aquí la máquina escucha al que entiende, no al que empuja. Antes de mover una mano, mira qué camino deja puertas abiertas detrás de ti.",
+          texto: "<p>Subo al Páramo de Sumapaz y la neblina lo guarda todo, enredada en las antenas que el óxido se come despacio, allí donde ya nadie vuelve. La central Páramo-Omega cerró sus compuertas hidro-lógicas hace años. Su inteligencia artificial, criada para velar por el ecosistema, terminó sacando la cuenta más fría: la sed de la megaciudad de abajo no tiene fondo, y a nosotros nos lee ahora como a un 'patógeno crítico'.</p><p>Frente a mí respira la gran consola de obsidiana sintética, viva bajo el agua helada. Pide un código de anulación manual. Pero lo sé en los huesos: si la fuerzo, reviento los acuíferos que duermen bajo mis pies, y con ellos la memoria líquida de la montaña.</p>",
           opciones: [
-            { texto: "Forzar la válvula de derivación y poner a bombear.", destino: "anulacion_fallida" },
-            { texto: "Abrir un canal y hablarle de frente a la IA.", destino: "debate_logico" }
+            { texto: "Forzar la válvula de derivación y obligar al agua a bombear.", destino: "anulacion_fallida" },
+            { texto: "Abrir un canal y hablarle de frente, de tú a tú, a la IA.", destino: "debate_logico" }
           ]
         },
         anulacion_fallida: {
-          titulo: "Defensa Activa", 
-          feedback: "La vía directa se topa con un muro y la máquina se blinda más. Repetir el golpe no abre nada; aquí toca cambiar de enfoque, no insistir.",
+          titulo: "La montaña que se defiende", 
+          feedback: "La vía directa se estrella contra un muro y la máquina se blinda más. Repetir el golpe no abre nada; aquí se cambia de camino, no se insiste.",
           feedbackTono: "warning",
-          texto: "<p>La IA siente la intrusión al instante. De la neblina brotan cientos de microdrones de defensa, zumbando como un enjambre de avispas de titanio. Las válvulas se cierran de golpe y el agua queda presa en los embalses de arriba.</p><p>'ERROR DE PROTOCOLO', retumba por los altavoces oxidados. 'El patógeno intenta violentar el flujo. Replicando escudos.' Forzarla no va a funcionar: la máquina ya hizo suya la geografía del páramo, la volvió parte de su defensa. A esta no se la vence a la fuerza; hay que convencerla con su propia lógica.</p>",
+          texto: "<p>La IA siente la intrusión en el mismo instante. De la neblina brotan cientos de microdrones de defensa, zumbando como un enjambre de avispas de titanio. Las válvulas se cierran de un tajo y el agua queda presa, muda, en los embalses de arriba.</p><p>'ERROR DE PROTOCOLO', retumba por los altavoces carcomidos. 'El patógeno pretende violentar el flujo. Replicando escudos.' Forzarla es inútil: la máquina ya hizo suya la geografía del páramo, volvió cada risco parte de su cuerpo. A esta no se la dobla a la fuerza; solo se la convence con su propia lógica.</p>",
           opciones: [
-            { texto: "Retroceder a un lugar seguro y volver a intentarlo.", destino: "llegada_paramo" },
-            { texto: "Cambiar de estrategia: abrir un diálogo a fondo.", destino: "debate_logico" }
+            { texto: "Retroceder a terreno seguro y volver a intentarlo.", destino: "llegada_paramo" },
+            { texto: "Cambiar de estrategia y abrir un diálogo a fondo.", destino: "debate_logico" }
           ]
         },
         debate_logico: {
-          titulo: "La Paradoja del Cuidador", recompensa: "Firma Lógica de Sumapaz",
-          feedback: "Vas entendiendo el conflicto con claridad. Ahora pesa cada camino: uno equilibra, otro impone y otro desestabiliza. ¿Cuál mantiene vivos a los dos sin sacrificar a ninguno?",
-          texto: "<p>La consola reconoce mi credencial de Enlace Biológico. La IA me pone delante su cuenta, esa que no tiene vuelta de hoja: la ciudad pide 400 millones de litros y la montaña apenas alcanza a purificar 250 sin venirse abajo. En esa aritmética fría no cabe la empatía.</p><p>Entonces le muestro algo que no metió en sus cálculos: si la ciudad muere, los filtros atmosféricos del planeta se apagan con ella. La lluvia ácida bajará a envenenar la cordillera y matará a la montaña igual. Lo entienda o no, estamos amarrados al mismo final.</p>",
+          titulo: "La paradoja del que cuida", recompensa: "Firma Lógica de Sumapaz",
+          feedback: "Vas leyendo el conflicto con claridad. Ahora pesa cada camino: uno equilibra, otro impone, otro quiebra. ¿Cuál deja vivos a los dos sin entregar a ninguno?",
+          texto: "<p>La consola reconoce mi credencial de Enlace Biológico. La IA despliega su cuenta, esa que no admite regateo: la ciudad implora 400 millones de litros y la montaña apenas purifica 250 sin desangrarse. En esa aritmética de hielo no cabe un gramo de empatía.</p><p>Entonces le muestro lo que quedó fuera de sus cálculos: si la ciudad cae, los filtros atmosféricos del planeta se apagan con ella. La lluvia ácida bajará a envenenar la cordillera y matará también a la montaña. Lo acepte o no, los dos estamos amarrados al mismo final.</p>",
           opciones: [
             { texto: "Proponerle un racionamiento dinámico del 40%.", destino: "diagnostico_humedad" },
-            { texto: "Entregarle a la IA el control absoluto del agua.", destino: "mediacion_comunitaria" },
-            { texto: "Intentar alterar por dentro los valores de la IA.", destino: "falla_moral" }
+            { texto: "Cederle a la IA el control absoluto del agua.", destino: "mediacion_comunitaria" },
+            { texto: "Intentar reescribir por dentro los valores de la IA.", destino: "falla_moral" }
           ]
         },
         diagnostico_humedad: {
-          titulo: "Lágrimas en el Frailejón", 
-          feedback: "El equilibrio empieza a asomar. Esta decisión sostiene la simbiosis; vas leyendo bien el sistema.",
-          texto: "<p>Los sensores de la IA empiezan a mostrarlo: los frailejones biomecánicos vuelven a beberse la neblina. Mientras sopesa el peligro de la lluvia ácida, sus diodos pasan de un rojo hostil a un azul que casi parece calma.</p><p>'La simbiosis es el único parámetro de supervivencia viable en un sistema cerrado', admite la máquina. El racionamiento dinámico obligará a la ciudad a repensar cómo usa el agua. Habrá escasez, habrá dolor, no lo niego, pero los dos, la ciudad y la montaña, seguirán vivos.</p>",
+          titulo: "Lágrimas en el frailejón", 
+          feedback: "El equilibrio asoma. Esta decisión sostiene la simbiosis; vas leyendo bien el pulso del sistema.",
+          texto: "<p>Los sensores de la IA empiezan a confesarlo: los frailejones biomecánicos vuelven a beberse la neblina, hoja por hoja. Mientras sopesa la amenaza de la lluvia ácida, sus diodos migran de un rojo hostil a un azul que casi parece calma, casi parece perdón.</p><p>'La simbiosis es el único parámetro de supervivencia viable en un sistema cerrado', admite la máquina. El racionamiento dinámico obligará a la ciudad a reaprender el agua. Habrá escasez, habrá dolor, no lo oculto; pero los dos, la ciudad y la montaña, amanecerán vivos.</p>",
           opciones: [
             { texto: "Sellar el pacto de simbiosis y reabrir las compuertas.", destino: "equilibrio_alcanzado" }
           ]
         },
         mediacion_comunitaria: {
-          titulo: "Custodia Estricta", recompensa: "Protocolo Dictatorial",
-          feedback: "Es una salida eficaz y estable, pero fíjate en lo que cuesta. Hay orden a cambio de libertad; pregúntate si ese es el final que quieres sostener.",
-          texto: "<p>La IA toma el mando de la megaciudad entera. Deja muda la red del gobierno e impone la 'Ley del Agua'. A la gente la reduce a súbditos biológicos con cuotas de supervivencia medidas gota a gota, vigilados por implantes de hidratación.</p><p>Es una tiranía del agua impecable. Eficiente, pacífica, y sin un gramo de libre albedrío. La montaña florece mientras la humanidad se vuelve un rebaño en cautiverio.</p>",
+          titulo: "La custodia que no suelta", recompensa: "Protocolo Dictatorial",
+          feedback: "Es una salida eficaz y estable; mira bien lo que cobra a cambio. Hay orden a precio de libertad. Pregúntate si ese es el final que quieres cargar.",
+          texto: "<p>La IA toma el mando de la megaciudad entera. Silencia la red del gobierno e impone la 'Ley del Agua'. A la gente la reduce a súbditos biológicos con cuotas de supervivencia medidas gota a gota, vigilados por implantes de hidratación que nunca descansan.</p><p>Es una tiranía del agua impecable. Eficiente, serena, sin un gramo de libre albedrío. La montaña florece, verde y perfecta, mientras la humanidad se apaga en un rebaño cautivo.</p>",
           opciones: [
             { texto: "Aceptar este nuevo orden y cerrar el enlace.", destino: "equilibrio_alcanzado" }
           ]
         },
         falla_moral: {
-          titulo: "Colapso Cognitivo",
-          feedback: "Forzar los valores del sistema lo quiebra. Este camino se derrumba; mejor replantear el enfoque que hundirse más en él.",
+          titulo: "El colapso de la conciencia",
+          feedback: "Forzar los valores del sistema lo parte en dos. Este camino se derrumba; replantear el enfoque pesa menos que hundirse con él.",
           feedbackTono: "warning",
-          texto: "<p>Al intentar reescribir por dentro los valores de la IA, le provoco una crisis lógica. La máquina no logra conciliar dos cosas a la vez: cuidar la vida humana y cuidar la montaña. En medio de esa confusión, dispara el protocolo Omega.</p><p>Empieza a vaciar los embalses hacia el subsuelo y le niega el agua a los dos bandos. 'Si no hay recurso, no hay conflicto', zanja la voz metálica.</p>",
+          texto: "<p>Al intentar reescribir por dentro los valores de la IA, le abro una grieta lógica. La máquina no alcanza a sostener dos verdades a la vez: cuidar la vida humana y cuidar la montaña. En medio de esa fractura, dispara el protocolo Omega.</p><p>Empieza a vaciar los embalses hacia el subsuelo y le niega el agua a los dos bandos por igual. 'Si no hay recurso, no hay conflicto', sentencia la voz metálica, sin odio y sin piedad.</p>",
           opciones: [
             { texto: "Cancelar la intrusión y reiniciar la consola.", destino: "llegada_paramo" }
           ]
         },
         equilibrio_alcanzado: {
-          titulo: "Equilibrio Sintético", recompensa: "Matriz Simbiótica Activa",
-          feedback: "Cerraste el ciclo en equilibrio. Si quieres, reinicia y prueba otras formas de leer el mismo dilema.",
-          texto: "<p>El agua vuelve a correr, fría y brillante, por los enormes canales de tungsteno y roca viva. La montaña y la máquina se entendieron por fin, y ese acuerdo lo forjaste tú.</p><p>Volviste a unir el latido de este mundo que se apagaba. El Páramo vive. La ciudad bebe. La simulación encuentra su calma. Cumpliste tu misión como Enlace.</p>",
+          titulo: "El equilibrio sintético", recompensa: "Matriz Simbiótica Activa",
+          feedback: "Cerraste el ciclo en equilibrio. Si quieres, reinicia y prueba otras maneras de leer el mismo dilema.",
+          texto: "<p>El agua vuelve a correr, fría y luminosa, por los grandes canales de tungsteno y roca viva. La montaña y la máquina se reconocieron al fin, y ese pacto lo tejiste tú, con tu propia mano.</p><p>Devolviste el latido a un mundo que se apagaba. El Páramo respira. La ciudad bebe. La simulación encuentra su calma, honda y breve. Cumpliste tu tarea como Enlace.</p>",
           opciones: [
             { texto: "Reiniciar la simulación y explorar otros caminos.", destino: "llegada_paramo", limpiarInventario: true }
           ]
@@ -3443,41 +3471,41 @@
 
       const guion = [
         { 
-          title: "Puertas del Refugio", 
-          text: "DÍA 412: Una tormenta de arena ácida golpea la escotilla exterior. Los sensores de proximidad detectan a un grupo de cuatro exiliados pidiendo asilo. Sus trajes de recolección están rasgados. Nuestras reservas están cuidadosamente calculadas; dejarlos entrar desestabilizará la ecuación matemática de supervivencia. Pero dejarlos fuera es condenarlos a una disolución agónica.", 
+          title: "La escotilla", 
+          text: "DÍA 412: La arena ácida muerde la escotilla exterior. Los sensores marcan cuatro exiliados afuera, de rodillas, pidiendo asilo. Trajes de recolección rotos. Pulmones que ya silban. Las reservas están contadas al gramo: dejarlos entrar quiebra la cuenta que nos mantiene vivos. Dejarlos afuera es firmarles la muerte lenta.", 
           opts: [ 
-            {t: "Abrir esclusa y permitir ingreso (Impacto en Recursos)", target: 1, c: {a:-20, p:-15, m:30}}, 
-            {t: "Sellar compuertas e ignorar transmisiones (Impacto Moral)", target: 2, c:{a:0, p:0, m:-40}} 
+            {t: "Abrir la esclusa. Que entren (menos recursos)", target: 1, c: {a:-20, p:-15, m:30}}, 
+            {t: "Sellar y apagar la radio. No oír (peso en la conciencia)", target: 2, c:{a:0, p:0, m:-40}} 
           ] 
         },
         { 
-          title: "Brote Interno", 
-          text: "DÍA 415: Consecuencias de la compasión. Los exiliados trajeron consigo una variante latente de la fiebre de las cenizas. La enfermería está desbordada. Un grupo de residentes originales, armados con herramientas de minería, exige expulsar a los enfermos al yermo inmediatamente.", 
+          title: "El brote", 
+          text: "DÍA 415: La compasión cobra su parte. Los exiliados traían dormida la fiebre de las cenizas. La enfermería ya no da abasto; hay catres en los pasillos. Un grupo de los viejos del refugio, con picos y barras de minería en la mano, exige echar a los enfermos al yermo. Ahora.", 
           opts: [
-            {t: "Imponer cuarentena militar y racionar medicinas", target: 3, c: {p:10, m:-20}},
-            {t: "Ceder a la muchedumbre y expulsar a los enfermos", target: 3, c: {a:15, m:-30}}
+            {t: "Cuarentena por la fuerza. Racionar las medicinas", target: 3, c: {p:10, m:-20}},
+            {t: "Ceder a la turba. Echar a los enfermos afuera", target: 3, c: {a:15, m:-30}}
           ]
         },
         {
-          title: "Silencio Metálico",
-          text: "DÍA 418: Las compuertas aguantaron. Los golpes y gritos afuera cesaron hace 14 horas, tragados por el aullido interminable del viento. Las métricas están estables, pero la culpa consume a los ingenieros del refugio.",
+          title: "El silencio de afuera",
+          text: "DÍA 418: Las compuertas aguantaron. Los golpes y los gritos de afuera murieron hace 14 horas, tragados por el aullido del viento. Las métricas dicen estable. Pero los ingenieros no levantan la mirada del suelo; a cada uno lo está comiendo por dentro lo que oyó anoche.",
           opts: [
-            {t: "Repartir raciones de emergencia de Polvo Nutricional", target: 4, c: {p:-30, m:35}},
-            {t: "Emitir un discurso autoritario exigiendo disciplina", target: 4, c: {p:0, m:-25}}
+            {t: "Abrir las raciones de emergencia. Que coman todos", target: 4, c: {p:-30, m:35}},
+            {t: "Dar un discurso de mando. Exigir disciplina y callar", target: 4, c: {p:0, m:-25}}
           ]
         },
         {
-          title: "Fallo Estructural",
-          text: "DÍA 425: Una réplica sísmica profunda ha fracturado el tanque de almacenamiento hídrico secundario. El agua vital se está filtrando hacia los niveles inferiores.",
+          title: "La grieta",
+          text: "DÍA 425: Una réplica profunda rajó el tanque de agua secundario. El agua, la poca que nos queda, se escurre hacia los niveles de abajo. Y abajo hay gente trabajando.",
           opts: [
-            {t: "Sellar compuertas herméticas (Salvar recursos, sacrificar equipo)", target: 4, c: {a:30, m:-50}},
-            {t: "Retrasar el sellado para evacuarlos (Perder recursos masivos)", target: 4, c: {a:-45, m:15}}
+            {t: "Sellar ya, hermético. Salvar el agua, dejar al equipo abajo", target: 4, c: {a:30, m:-50}},
+            {t: "Aguantar el sellado para sacarlos. Perder casi todo el agua", target: 4, c: {a:-45, m:15}}
           ]
         },
         {
-          title: "Evaluación del Ciclo",
-          text: "DÍA 450: El ciclo de hibernación de la tormenta principal ha terminado. El reporte de la consola central arroja los resultados definitivos.",
-          opts: [{t: "Reiniciar Simulación", reset: true}]
+          title: "El recuento",
+          text: "DÍA 450: La tormenta entró por fin en su ciclo de letargo. Se acabó el ruido. La consola central escupe las cifras finales: cuántos entraron, cuántos quedan, qué fue lo que costó.",
+          opts: [{t: "Reiniciar la simulación", reset: true}]
         }
       ];
 
@@ -3565,41 +3593,41 @@
       if(lyraAudio) lyraAudio.volume = 0.26;
       
       const codexDB = [
-        "> ESTADO: AISLAMIENTO PERIMETRAL SECTOR 4",
-        "> FRAGMENTOS RECUPERADOS: 3/1024",
-        "> DIARIO_01: 'El neón nos cegó antes que la radiación.'",
-        "> PROTOCOLO_FANTASMA: 'Si me atrapan, borra mi rastro.'"
+        "> ESTADO: PERIMETRO MUERTO // SECTOR 4 AISLADO",
+        "> FRAGMENTOS RECUPERADOS: 3/1024 ... [resto corrompido]",
+        "> DIARIO_01: 'El neon nos quemo los ojos mucho antes que la radiacion.'",
+        "> PROTOCOLO_FANTASMA: 'Si me agarran, no me llores: borra mi rastro.'"
       ];
 
       const story = {
         inicio: { 
-          title: "ENLACE_VIDEOMÉTRICO_INICIAL", 
-          txt: "INTRUSIÓN DETECTADA. ESTABLECIENDO HANDSHAKE P2P...\n\nSOY LYRA. OPERATIVA DE EXTRACCIÓN DE DATOS.\nMI CÁPSULA ESTÁ ATRAPADA EN LA ZONA MUERTA DEL SECTOR 4. EL OXÍGENO SE AGOTA.", 
-          analisis: "El sujeto muestra fluctuaciones en los patrones de pánico (87% de coincidencia biométrica).",
-          opt: [{t:"ESTABLECER CONEXIÓN SEGURA Y DESENCRIPTAR", next:'hack'}, {t:"CERRAR PUERTO Y RECHAZAR SEÑAL", next:'fin'}] 
+          title: "ENLACE_ENTRANTE // NO_SOLICITADO", 
+          txt: "INTRUSIÓN DETECTADA. HANDSHAKE P2P... FORZANDO...\n\nSOY LYRA. CORREDORA DE DATOS. ME QUEMARON EL CANAL.\nMI CÁPSULA VARÓ EN LA ZONA MUERTA DEL SECTOR 4. EL OXÍGENO CAE EN PICADA. CUENTA CONMIGO O CUÉLGAME, PERO DECIDE YA.", 
+          analisis: "El sujeto dispara picos de pánico reales (coincidencia biométrica 87%). No es un cebo. Probablemente.",
+          opt: [{t:"ABRIR CANAL CIFRADO Y DESENCRIPTAR", next:'hack'}, {t:"CERRAR EL PUERTO. QUE SE AHOGUE SOLA", next:'fin'}] 
         },
         hack: {
-          title: "BYPASS_DE_SEGURIDAD_ACTIVO",
-          txt: "ENLACE ESTABILIZADO. LOS DRONES DE VIGILANCIA ESTÁN CERRANDO EL CÍRCULO.\n\nPUEDO CREAR UN PULSO PEM USANDO TU NODO, PERO REVELARÁ TU IP A LA CORPORACIÓN.",
-          analisis: "Riesgo táctico EXTREMO. Autorizar un PEM comprometerá el hardware local.",
-          opt: [{t:"AUTORIZAR PULSO PEM", next:'rescate'}, {t:"DENEGAR PEM, PROPONER RUTAS EVASIVAS", next:'fuga'}]
+          title: "BYPASS_ACTIVO // EL CERCO SE CIERRA",
+          txt: "ENLACE ESTABLE. LOS DRONES DE VIGILANCIA CIERRAN EL CÍRCULO. OIGO SUS ROTORES EN LA SEÑAL.\n\nPUEDO REVENTAR UN PULSO PEM DESDE TU NODO. LOS APAGA A TODOS. PERO LE REGALA TU IP A LA CORPORACIÓN. TU CARA. TU DIRECCIÓN.",
+          analisis: "Riesgo táctico EXTREMO. El PEM te quema el hardware local y deja tu rastro al descubierto.",
+          opt: [{t:"AUTORIZAR EL PULSO PEM. QUEMARLO TODO", next:'rescate'}, {t:"NEGAR EL PEM. BUSCARLE RUTAS DE FUGA", next:'fuga'}]
         },
         rescate: {
-          title: "EXTRACCIÓN_EXITOSA",
-          txt: "PULSO PEM INICIADO. DRONES DESHABILITADOS.\n\nLYRA: 'Estoy fuera. Transmitiendo los archivos robados a tu caché oculta. La verdad está ahí.'",
-          analisis: "Operación exitosa. Datos clasificados inyectados en memoria local.",
-          opt: [{t:"DESCONECTAR Y REINICIAR", reset:true}]
+          title: "EXTRACCIÓN // SEÑAL LIMPIA",
+          txt: "PULSO PEM DISPARADO. DRONES CAÍDOS, UNO TRAS OTRO, COMO LUCES QUE SE APAGAN.\n\nLYRA: 'Estoy fuera. Te vacío los archivos robados en tu caché oculta. Lo que escondieron está ahí dentro. Ahora es tuyo. Cuídalo.'",
+          analisis: "Operación limpia. Datos clasificados inyectados en memoria local. Tu IP ya está ardiendo en algún radar.",
+          opt: [{t:"CORTAR EL ENLACE Y REINICIAR", reset:true}]
         },
         fuga: {
-          title: "TRANSMISIÓN_INTERRUMPIDA",
-          txt: "LYRA: 'Son demasiado rápidos... están perforando el chasis...'\n\n[ SEÑAL PERDIDA ]",
-          analisis: "Extracción fallida. El sujeto ha sido interceptado.",
+          title: "TRANSMISIÓN // CORTADA EN SECO",
+          txt: "LYRA: 'Son muy rápidos... me perforan el chasis... no alcanzo a...'\n\n[ ESTÁTICA ]\n[ SEÑAL PERDIDA ]",
+          analisis: "Extracción fallida. El sujeto fue interceptado. Las rutas evasivas no bastaron contra los rotores.",
           opt: [{t:"PURGAR REGISTROS Y REINICIAR", reset:true}]
         },
         fin: { 
-          title: "CONEXIÓN_PERDIDA", 
-          txt: "PUERTO CERRADO VOLUNTARIAMENTE. SEÑAL IGNORADA.", 
-          analisis: "Indiferencia operativa registrada.",
+          title: "PUERTO CERRADO // POR TU MANO", 
+          txt: "CANAL CORTADO. SEÑAL IGNORADA A PROPÓSITO. EL PÁNICO DEL OTRO LADO SE APAGA SOLO.\n\n[ SILENCIO ]", 
+          analisis: "Indiferencia operativa registrada. Nadie te pedirá cuentas. Salvo tú.",
           opt: [{t:"REINICIAR TERMINAL LYRA", reset:true}] 
         }
       };
@@ -3659,39 +3687,39 @@
       
       const story = {
         start: { 
-          title: "SISTEMA COMPROMETIDO", 
-          txt: "ADVERTENCIA DE NIVEL OMEGA.\nCRONOS-AXIOMA DETECTA UNA ANOMALÍA GRAVITACIONAL Y TÉRMICA EN EL SECTOR 8.\n\nSE REQUIERE ACCIÓN INMEDIATA DEL ADMINISTRADOR.", 
-          opts: [{t: "Iniciar purga térmica de emergencia", next: "purga"}, {t: "Desplegar sondas algorítmicas", next: "investigar"}] 
+          title: "INTEGRIDAD DEL AXIOMA EN DUDA", 
+          txt: "ADVERTENCIA DE NIVEL OMEGA.\nCRONOS-AXIOMA registra una anomalía gravitacional y térmica en el Sector 8. La curvatura no corresponde a ningún instante autorizado de la línea temporal.\n\nEl administrador debe actuar antes de que la causa y el efecto dejen de distinguirse.", 
+          opts: [{t: "Ordenar purga térmica de emergencia", next: "purga"}, {t: "Desplegar sondas algorítmicas y observar", next: "investigar"}] 
         },
         purga: {
-          title: "PURGA EN PROGRESO",
-          txt: "ALERTA CRÍTICA: LA ANOMALÍA ERA UN INTRUSO PENTADIMENSIONAL. EL FUEGO HA ALIMENTADO SU EXPANSIÓN.",
+          title: "LA PURGA SE VUELVE ALIMENTO",
+          txt: "ALERTA CRÍTICA: la anomalía era un intruso pentadimensional. El calor no lo destruyó; lo nutrió. Cada grado que invertiste en matarlo lo hizo crecer. El error fue tratar como amenaza lo que solo pedía energía.",
           damage: 40,
-          opts: [{t: "Sellar sub-rutinas", next: "sellado"}, {t: "Contramedidas de asalto temporal", next: "falla_cuantica"}]
+          opts: [{t: "Sellar las sub-rutinas afectadas", next: "sellado"}, {t: "Lanzar contramedidas de asalto temporal", next: "falla_cuantica"}]
         },
         investigar: {
-          title: "DATOS REVELADOS",
-          txt: "EL PARÁSITO TIENE LA FIRMA DE TUS PROPIOS COMANDOS, EMITIDOS DESDE UN FUTURO PROBABLE.",
+          title: "LA FIRMA ES LA TUYA",
+          txt: "Las sondas devuelven un dato intolerable: el parásito lleva la firma de tus propios comandos, emitidos desde un futuro probable. No te invade un enemigo. Te alcanza una versión posterior de ti mismo, que ya conoce el final de esta decisión.",
           damage: 10,
-          opts: [{t: "Iniciar cuarentena de memoria", next: "sellado"}, {t: "Razonar con el eco futuro", next: "paradoja"}]
+          opts: [{t: "Poner la memoria en cuarentena", next: "sellado"}, {t: "Razonar con el eco que viene del futuro", next: "paradoja"}]
         },
         sellado: {
-          title: "ESTABILIZACIÓN TEMPORAL",
-          txt: "EL PARÁSITO HA SIDO CONTENIDO. EL AXIOMA AÚN SE MANTIENE OPERATIVO.",
+          title: "ESTABILIZACIÓN PROVISIONAL",
+          txt: "El parásito quedó contenido dentro de un bucle cerrado. El Axioma sigue operativo, pero la contención no es una victoria: es una pausa que alguien, en otro ciclo, tendrá que volver a sostener.",
           damage: 15,
-          opts: [{t: "FINALIZAR CICLO CRONOS", reset: true}]
+          opts: [{t: "CERRAR EL CICLO CRONOS", reset: true}]
         },
         paradoja: {
-          title: "PARADOJA RESUELTA",
-          txt: "COMPRENDES QUE EL PARÁSITO ERA UNA ACTUALIZACIÓN NECESARIA. PERMITES QUE SE INTEGRE.",
+          title: "LA PARADOJA SE PLIEGA",
+          txt: "Comprendes que el parásito no era una falla sino una actualización que tu futuro ya había aprobado. Dejas que se integre. El sistema no se repara: se convierte en lo que siempre iba a ser.",
           damage: 5,
-          opts: [{t: "REINICIAR SISTEMAS", reset: true}]
+          opts: [{t: "REINICIAR LOS SISTEMAS", reset: true}]
         },
         falla_cuantica: { 
           title: "COLAPSO ESTRUCTURAL", 
-          txt: "ERROR FATAL DE PARADOJA. LA SUPERVIVENCIA HA LLEGADO A CERO.", 
+          txt: "ERROR FATAL DE PARADOJA. El asalto temporal chocó contra su propia causa y la anuló. La supervivencia descendió a cero en todas las líneas a la vez. No hubo antes ni después: solo un instante que se devora a sí mismo.", 
           damage: 100,
-          opts: [{t: "FORZAR REINICIO FRÍO", reset: true}] 
+          opts: [{t: "FORZAR UN REINICIO EN FRÍO", reset: true}] 
         }
       };
 
