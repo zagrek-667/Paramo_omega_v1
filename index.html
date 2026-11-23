@@ -186,25 +186,51 @@
       width: 100%; display: flex; justify-content: space-between; align-items: center;
       font-size: clamp(13px, 3.4vw, 17px); letter-spacing: 2px; text-transform: uppercase;
       text-shadow: 0 0 6px rgba(74, 246, 38, 0.5);
+      padding: 6px 12px; border-radius: 7px;
+      background: linear-gradient(180deg, rgba(8, 24, 14, 0.75), rgba(3, 12, 7, 0.75));
+      border: 1px solid rgba(74, 246, 38, 0.28);
+      box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.6), 0 0 10px rgba(16, 185, 129, 0.12);
     }
-    .aquifer-hud .aquifer-meter { color: #34d399; }
+    .aquifer-hud span { font-weight: bold; }
+    .aquifer-hud #aquifer-score, .aquifer-hud #aquifer-meter {
+      display: inline-block; min-width: 1.6em; text-align: right;
+      color: #baffb0; text-shadow: 0 0 8px rgba(74, 246, 38, 0.7);
+    }
+    .aquifer-hud .aquifer-meter { color: #34d399; text-shadow: 0 0 6px rgba(16, 185, 129, 0.55); }
+    .aquifer-hud .aquifer-meter #aquifer-meter { color: #7ff2cf; text-shadow: 0 0 8px rgba(16, 185, 129, 0.7); }
     .aquifer-canvas-wrap {
       position: relative; width: 100%;
-      border: 1px solid rgba(74, 246, 38, 0.4); border-radius: 10px; overflow: hidden;
-      box-shadow: 0 0 36px rgba(16, 185, 129, 0.22), inset 0 0 40px rgba(0, 0, 0, 0.6);
+      /* Bisel de consola 80s: marco oscuro con reflejo interior y halo exterior. */
+      padding: 7px;
+      border: 2px solid rgba(74, 246, 38, 0.32); border-radius: 14px; overflow: hidden;
+      background: linear-gradient(150deg, #0a1b11 0%, #040d08 55%, #0a1b11 100%);
+      box-shadow:
+        0 0 42px rgba(16, 185, 129, 0.28),
+        0 0 2px rgba(74, 246, 38, 0.5),
+        inset 0 0 0 1px rgba(74, 246, 38, 0.18),
+        inset 0 2px 8px rgba(180, 255, 176, 0.08),
+        inset 0 0 44px rgba(0, 0, 0, 0.72);
     }
-    #aquifer-canvas { display: block; width: 100%; height: auto; background: #030a06; touch-action: none; }
+    #aquifer-canvas {
+      display: block; width: 100%; height: auto; background: #020805; touch-action: none;
+      border-radius: 8px;
+    }
     /* Scanlines + viñeta SUTILES sobre el lienzo; no capturan eventos. */
     .aquifer-canvas-wrap::after {
-      content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 10px;
+      content: ""; position: absolute; inset: 7px; pointer-events: none; border-radius: 8px;
       background:
         repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.14) 3px, rgba(0,0,0,0) 4px),
-        radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.5) 100%);
+        radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
       opacity: 0.6;
     }
     #aquifer-msg {
       min-height: 1.4em; text-align: center; font-size: clamp(13px, 3.6vw, 18px);
       letter-spacing: 1.5px; color: #d9ffcf; text-shadow: 0 0 8px rgba(74, 246, 38, 0.5);
+      animation: aquifer-msg-pulse 2.6s var(--ease) infinite;
+    }
+    @keyframes aquifer-msg-pulse {
+      0%, 100% { text-shadow: 0 0 8px rgba(74, 246, 38, 0.5); }
+      50% { text-shadow: 0 0 14px rgba(74, 246, 38, 0.85); }
     }
     .aquifer-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
     .aquifer-btn {
@@ -228,9 +254,11 @@
     @media (prefers-reduced-motion: reduce) {
       #aquifer-overlay { transition: none; }
       .aquifer-canvas-wrap::after {
+        inset: 7px;
         background: radial-gradient(ellipse at center, transparent 62%, rgba(0,0,0,0.45) 100%);
         opacity: 0.4;
       }
+      #aquifer-msg { animation: none; text-shadow: 0 0 8px rgba(74, 246, 38, 0.5); }
     }
 
     /* Estado de carga tras pulsar Iniciar: el botón pasa a "Cargando…" mientras el
@@ -2798,6 +2826,62 @@
         // Dos tonos que ascienden: "armado / listo".
         this._blip(660, 0.09, 0.11, 'triangle');
         this._blip(990, 0.12, 0.09, 'triangle');
+      },
+      // ----------------------------------------------------------------------
+      // SFX del minijuego "Guardián del Acuífero" (AquiferGame). Todos reutilizan
+      // _ensure()/_blip(), así que heredan el gating de unlock+master.gain y son
+      // NO-OP mientras !this.ready. NINGUNO toca this.master.gain. Ganancia baja
+      // y de la misma familia tonal esmeralda/CRT para integrarse con el resto.
+      // ----------------------------------------------------------------------
+      // Recoger agua limpia: "bloop" suave ascendente (dos triangle rápidos).
+      aqCatch: function() {
+        this._ensure();
+        if (!this.ready) return;
+        const f = 660 + Math.random() * 40;
+        this._blip(f, 0.05, 0.13, 'triangle');
+        this._blip(f * 1.5, 0.07, 0.11, 'triangle');
+      },
+      // Recoger contaminante: "zap/err" corto y áspero (sawtooth grave + parcial disonante).
+      aqAcid: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(150, 0.14, 0.14, 'sawtooth');
+        this._blip(190, 0.11, 0.08, 'square');
+      },
+      // Perder agua limpia: "plip" suave descendente.
+      aqMiss: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(260, 0.09, 0.12, 'sine');
+        this._blip(180, 0.11, 0.09, 'sine');
+      },
+      // Hito (cada 10 puntos): arpegio ascendente breve (3 triangle).
+      aqLevel: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(523, 0.07, 0.11, 'triangle');
+        this._blip(659, 0.08, 0.10, 'triangle');
+        this._blip(784, 0.10, 0.09, 'triangle');
+      },
+      // Fin de partida: floreo ascendente (good) o grave descendente (lose).
+      aqOver: function(good) {
+        this._ensure();
+        if (!this.ready) return;
+        if (good) {
+          this._blip(523, 0.10, 0.12, 'triangle');
+          this._blip(659, 0.11, 0.11, 'triangle');
+          this._blip(880, 0.16, 0.10, 'triangle');
+        } else {
+          this._blip(220, 0.16, 0.12, 'sine');
+          this._blip(150, 0.22, 0.10, 'sine');
+        }
+      },
+      // Arranque de partida: pequeño "power-on".
+      aqStart: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(330, 0.07, 0.10, 'triangle');
+        this._blip(495, 0.10, 0.09, 'triangle');
       }
     };
 
@@ -4059,7 +4143,48 @@
       const paddle = { x: 0, w: 76, h: 16, speed: 420 };
       const move = { left: false, right: false };
 
+      // --- Estado visual (sólo render; no afecta la mecánica ni el catch math) ---
+      let elapsed = 0;            // tiempo acumulado para mist/beacon/olas.
+      let meterShown = 5;         // valor del acuífero interpolado para la animación.
+      let shakeT = 0, shakeMag = 0; // temblor de pantalla (acid/miss).
+      let flashT = 0, flashColor = 'rgba(239,68,68,'; // destello rojo transitorio.
+      let powerDown = 0;          // barrido de "power-down" en game over (0..1 restante).
+      let powerDownGood = false;
+      const particles = [];       // pool reutilizado de partículas (chispas + popups).
+      const PARTICLE_CAP = 60;    // tope duro (móvil amigable).
+      // Lienzo offscreen con el fondo estático (cielo+montañas+frailejones+antenas).
+      let bg = null, bgW = 0, bgH = 0;
+
       const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Obtiene una partícula del pool (reutiliza entradas muertas) respetando el tope.
+      function spawnParticle(p) {
+        for (let i = 0; i < particles.length; i++) {
+          if (particles[i].life <= 0) { Object.assign(particles[i], p); return; }
+        }
+        if (particles.length < PARTICLE_CAP) particles.push(p);
+      }
+      // Ráfaga de chispas en (x,y) con color dado.
+      function burst(x, y, color, count, speed) {
+        if (reducedMotion) count = Math.min(count, 4);
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = speed * (0.4 + Math.random() * 0.8);
+          spawnParticle({
+            kind: 'spark', x: x, y: y,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20,
+            life: 0.5 + Math.random() * 0.4, maxLife: 0.9,
+            r: 1.5 + Math.random() * 2, color: color, text: ''
+          });
+        }
+      }
+      // Texto flotante ('+1', hitos...).
+      function popup(x, y, text, color) {
+        spawnParticle({
+          kind: 'text', x: x, y: y, vx: 0, vy: -36,
+          life: 0.95, maxLife: 0.95, r: 0, color: color, text: text
+        });
+      }
 
       function resize() {
         if (!canvas) return;
@@ -4072,12 +4197,118 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         paddle.y = h - 30;
         paddle.x = Math.min(Math.max(paddle.x || w / 2, paddle.w / 2), w - paddle.w / 2);
+        buildBackdrop(); // rehacer el fondo estático al tamaño de trabajo actual.
       }
 
       function reset() {
         score = 0; meter = 5; spawnTimer = 0; spawnEvery = 0.95; fallBase = 90;
         drops = []; paddle.x = w / 2; move.left = false; move.right = false;
+        particles.length = 0; meterShown = 5;
+        shakeT = 0; shakeMag = 0; flashT = 0; powerDown = 0;
         updateHud();
+      }
+
+      // Precomputa el fondo estático (cielo + cordilleras + frailejones + antenas)
+      // UNA sola vez por tamaño en un lienzo offscreen; se blittea cada frame.
+      // Sólo la neblina y el faro se animan en vivo (ver paintFrame).
+      function buildBackdrop() {
+        if (w <= 0 || h <= 0) return;
+        if (bg && bgW === w && bgH === h) return;
+        bg = document.createElement('canvas');
+        bg.width = Math.max(1, Math.floor(w * dpr));
+        bg.height = Math.max(1, Math.floor(h * dpr));
+        bgW = w; bgH = h;
+        const g = bg.getContext('2d');
+        if (!g) { bg = null; return; }
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // (a) Cielo: gradiente de fósforo al anochecer.
+        const sky = g.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#020805');
+        sky.addColorStop(0.6, '#041210');
+        sky.addColorStop(0.86, '#06231c');
+        sky.addColorStop(1, '#083026');
+        g.fillStyle = sky;
+        g.fillRect(0, 0, w, h);
+
+        // Resplandor tenue sobre el horizonte.
+        const glow = g.createRadialGradient(w * 0.5, h * 0.86, 10, w * 0.5, h * 0.86, w * 0.7);
+        glow.addColorStop(0, 'rgba(16, 185, 129, 0.16)');
+        glow.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        g.fillStyle = glow;
+        g.fillRect(0, 0, w, h);
+
+        const horizon = h * 0.82;
+
+        // (b) Cordilleras andinas: 3 capas que aclaran de atrás hacia adelante.
+        const ridges = [
+          { base: horizon - 46, amp: 30, col: 'rgba(6, 26, 20, 0.9)', seed: 1.3 },
+          { base: horizon - 24, amp: 24, col: 'rgba(5, 34, 26, 0.95)', seed: 2.7 },
+          { base: horizon - 6,  amp: 18, col: 'rgba(4, 44, 33, 1)',    seed: 4.1 }
+        ];
+        for (let r = 0; r < ridges.length; r++) {
+          const rg = ridges[r];
+          g.fillStyle = rg.col;
+          g.beginPath();
+          g.moveTo(0, h);
+          g.lineTo(0, rg.base);
+          const steps = 10;
+          for (let i = 0; i <= steps; i++) {
+            const x = (w / steps) * i;
+            const y = rg.base
+              - Math.sin(i * rg.seed + r) * rg.amp * 0.5
+              - Math.cos(i * rg.seed * 0.6 + r * 2) * rg.amp * 0.5;
+            g.lineTo(x, y);
+          }
+          g.lineTo(w, h);
+          g.closePath();
+          g.fill();
+        }
+
+        // (c) Frailejones: tallo + roseta, silueta simple cerca del horizonte.
+        function frailejon(fx, fy, scale) {
+          g.save();
+          g.translate(fx, fy);
+          g.fillStyle = 'rgba(3, 38, 28, 0.95)';
+          g.fillRect(-2 * scale, -14 * scale, 4 * scale, 14 * scale); // tallo
+          // roseta (rombo de hojas)
+          g.beginPath();
+          g.moveTo(0, -24 * scale);
+          g.lineTo(9 * scale, -15 * scale);
+          g.lineTo(0, -10 * scale);
+          g.lineTo(-9 * scale, -15 * scale);
+          g.closePath();
+          g.fill();
+          g.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+          g.lineWidth = 1;
+          g.stroke();
+          g.restore();
+        }
+        frailejon(w * 0.16, horizon - 2, 1.0);
+        frailejon(w * 0.30, horizon + 2, 0.75);
+        frailejon(w * 0.82, horizon, 0.9);
+
+        // (d) Antena/torre "Páramo-Omega central" (el faro se dibuja animado aparte).
+        const tx = w * 0.70, ty = horizon - 2;
+        g.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(tx - 6, ty); g.lineTo(tx, ty - 40);
+        g.moveTo(tx + 6, ty); g.lineTo(tx, ty - 40);
+        g.moveTo(tx - 4, ty - 13); g.lineTo(tx + 4, ty - 13);
+        g.moveTo(tx - 2, ty - 26); g.lineTo(tx + 2, ty - 26);
+        g.stroke();
+        // segunda torre más pequeña y lejana
+        const tx2 = w * 0.44, ty2 = horizon - 20;
+        g.beginPath();
+        g.moveTo(tx2 - 4, ty2); g.lineTo(tx2, ty2 - 24);
+        g.moveTo(tx2 + 4, ty2); g.lineTo(tx2, ty2 - 24);
+        g.stroke();
+
+        // Línea de nivel freático sobre el "suelo".
+        g.strokeStyle = 'rgba(16, 185, 129, 0.22)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(0, h - 8); g.lineTo(w, h - 8); g.stroke();
       }
 
       function updateHud() {
@@ -4101,11 +4332,19 @@
         if (d.acid) {
           meter -= 1;
           flashMsg('¡Contaminante! El acuífero cede.');
-          if (SfxEngine && SfxEngine.ready) SfxEngine._blip(150, 0.14, 0.14, 'sawtooth');
+          burst(d.x, d.y, '239,68,68', 10, 120);
+          triggerHit('rgba(239,68,68,');
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqAcid();
         } else {
           score += 1;
-          if (score % 10 === 0) { spawnEvery = Math.max(0.42, spawnEvery - 0.06); fallBase += 10; }
-          if (SfxEngine && SfxEngine.ready) SfxEngine._blip(880 + Math.random() * 120, 0.06, 0.16, 'triangle');
+          burst(d.x, d.y, '52,211,153', 8, 90);
+          popup(d.x, d.y - 4, '+1', '#baffb0');
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqCatch();
+          if (score % 10 === 0) {
+            spawnEvery = Math.max(0.42, spawnEvery - 0.06); fallBase += 10;
+            popup(paddle.x, paddle.y - paddle.h - 18, '+' + score, '#7ff2cf');
+            if (SfxEngine && SfxEngine.ready) SfxEngine.aqLevel();
+          }
         }
         updateHud();
       }
@@ -4113,8 +4352,18 @@
       function missClean() {
         meter -= 1;
         flashMsg('El agua limpia se perdió…');
-        if (SfxEngine && SfxEngine.ready) SfxEngine._blip(220, 0.1, 0.12, 'sine');
+        burst(paddle.x, paddle.y - paddle.h, '239,68,68', 7, 90);
+        triggerHit('rgba(239,68,68,');
+        if (SfxEngine && SfxEngine.ready) SfxEngine.aqMiss();
         updateHud();
+      }
+
+      // Dispara temblor + destello rojo transitorio (deshabilitado bajo reducedMotion).
+      function triggerHit(color) {
+        flashColor = color;
+        if (reducedMotion) return;
+        shakeT = 0.28; shakeMag = 6;
+        flashT = 0.22;
       }
 
       let msgTimer = null;
@@ -4129,27 +4378,31 @@
 
       function gameOver() {
         state = 'over'; running = false;
-        if (raf) { cancelAnimationFrame(raf); raf = null; }
         const good = score >= 20;
+        powerDownGood = good;
+        powerDown = reducedMotion ? 0 : 0.9; // barrido de apagado (se desvanece en paintFrame).
+        shakeT = 0; flashT = 0; particles.length = 0;
         if (msgEl) msgEl.textContent = good
           ? 'El acuífero resiste. ' + score + ' gotas a salvo.'
           : 'El páramo se seca… reintenta. (' + score + ')';
         if (startBtn) startBtn.textContent = '▶ Reintentar';
-        if (SfxEngine && SfxEngine.ready) {
-          SfxEngine._blip(good ? 660 : 180, 0.18, 0.12, good ? 'triangle' : 'sine');
-          if (good) SfxEngine._blip(990, 0.2, 0.1, 'triangle');
-        }
-        paintFrame(); // deja la última imagen visible.
+        if (SfxEngine && SfxEngine.ready) SfxEngine.aqOver(good);
+        // Cancela el bucle DESPUÉS de fijar el estado; paintFrame deja la última imagen.
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        paintFrame();
       }
 
       function startGame() {
         if (!canvas || !ctx) return;
         reducedMotion = reduced();
+        // Cancela cualquier rAF pendiente (p.ej. el barrido de power-down) antes de arrancar.
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
         resize();
         reset();
         state = 'playing';
         if (startBtn) startBtn.textContent = '▶ Reiniciar';
         if (msgEl) msgEl.textContent = '';
+        if (SfxEngine && SfxEngine.ready) SfxEngine.aqStart();
         if (!running) { running = true; lastTs = 0; raf = requestAnimationFrame(step); }
       }
 
@@ -4159,6 +4412,21 @@
         let dt = (ts - lastTs) / 1000;
         lastTs = ts;
         if (dt > 0.05) dt = 0.05; // clamp de delta (pestañas en 2º plano / saltos)
+
+        // --- Avance visual (independiente del estado de juego) ---
+        elapsed += dt;
+        if (reducedMotion) meterShown = Math.max(0, meter); // salto instantáneo bajo reducedMotion.
+        else meterShown += (Math.max(0, meter) - meterShown) * Math.min(1, dt * 9);
+        if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
+        if (flashT > 0) flashT = Math.max(0, flashT - dt);
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (p.life <= 0) continue;
+          p.life -= dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if (p.kind === 'spark') p.vy += 160 * dt; // gravedad leve
+        }
 
         if (state === 'playing') {
           // Movimiento de la cisterna.
@@ -4196,52 +4464,291 @@
       function paintFrame() {
         if (!ctx) return;
         ctx.clearRect(0, 0, w, h);
-        // Línea de "nivel freático" sutil al fondo.
-        ctx.strokeStyle = 'rgba(16, 185, 129, 0.2)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, h - 8); ctx.lineTo(w, h - 8); ctx.stroke();
 
-        // Gotas.
-        for (let i = 0; i < drops.length; i++) {
-          const d = drops[i];
-          ctx.beginPath();
-          ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-          if (d.acid) {
-            ctx.fillStyle = 'rgba(245, 158, 11, 0.95)'; // ámbar
-            ctx.shadowColor = 'rgba(239, 68, 68, 0.7)';
-          } else {
-            ctx.fillStyle = 'rgba(52, 211, 153, 0.95)'; // esmeralda/cian
-            ctx.shadowColor = 'rgba(74, 246, 38, 0.6)';
-          }
-          ctx.shadowBlur = reducedMotion ? 0 : 8;
-          ctx.fill();
-          ctx.shadowBlur = 0;
+        // Temblor de pantalla (gated bajo reducedMotion vía shakeT=0).
+        let sx = 0, sy = 0;
+        if (shakeT > 0 && shakeMag > 0) {
+          const k = shakeT / 0.28;
+          sx = (Math.random() * 2 - 1) * shakeMag * k;
+          sy = (Math.random() * 2 - 1) * shakeMag * k;
         }
+        ctx.save();
+        ctx.translate(sx, sy);
 
-        // Cisterna / frailejón (paddle).
-        const px = paddle.x - paddle.w / 2;
-        ctx.fillStyle = '#4af626';
-        ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(74, 246, 38, 0.6)';
-        ctx.shadowBlur = reducedMotion ? 0 : 10;
-        ctx.fillRect(px, paddle.y - paddle.h, paddle.w, paddle.h);
-        ctx.shadowBlur = 0;
-        // Borde esmeralda de la cisterna.
-        ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)';
-        ctx.strokeRect(px, paddle.y - paddle.h, paddle.w, paddle.h);
+        // --- (1) Fondo estático precomputado ---
+        if (!bg || bgW !== w || bgH !== h) buildBackdrop();
+        if (bg) ctx.drawImage(bg, 0, 0, w, h);
+        else { ctx.fillStyle = '#020805'; ctx.fillRect(0, 0, w, h); }
+
+        // --- (2) Capas animadas sobre el fondo: neblina + faro ---
+        drawMist();
+        drawBeacon();
+
+        // --- (3) Gotas ---
+        for (let i = 0; i < drops.length; i++) drawDrop(drops[i]);
+
+        // --- (4) Colector (cisterna/frailejón) ---
+        drawCollector();
+
+        // --- (5) Partículas (chispas + popups) ---
+        drawParticles();
+
+        // --- (6) Medidor gráfico del ACUÍFERO ---
+        drawMeter();
 
         if (state === 'idle') {
           drawCenterText('Pulsa Iniciar / Espacio', '#d9ffcf');
         } else if (state === 'over') {
           drawCenterText('Espacio o Reintentar', 'rgba(217,255,207,0.85)');
         }
+
+        ctx.restore();
+
+        // --- (7) Tratamiento CRT + destellos (sin desplazamiento del temblor) ---
+        drawCrt();
+        if (flashT > 0) {
+          ctx.fillStyle = flashColor + (0.28 * (flashT / 0.22)).toFixed(3) + ')';
+          ctx.fillRect(0, 0, w, h);
+        }
+        if (powerDown > 0 && !reducedMotion) {
+          // Barrido de "power-down": banda que colapsa hacia el centro.
+          const amt = 1 - powerDown / 0.9; // 0..1
+          const band = (h / 2) * amt;
+          ctx.fillStyle = 'rgba(0,0,0,0.92)';
+          ctx.fillRect(0, 0, w, band);
+          ctx.fillRect(0, h - band, w, band);
+          if (band > 2) {
+            ctx.fillStyle = powerDownGood ? 'rgba(74,246,38,0.5)' : 'rgba(239,68,68,0.5)';
+            ctx.fillRect(0, band - 1, w, 2);
+            ctx.fillRect(0, h - band - 1, w, 2);
+          }
+          powerDown = Math.max(0, powerDown - 0.045);
+          if (powerDown > 0 && state === 'over' && !running) {
+            raf = requestAnimationFrame(function(){ raf = null; paintFrame(); });
+          }
+        }
+      }
+
+      // Neblina a la deriva: 2 bandas tenues que se desplazan lentamente.
+      function drawMist() {
+        const horizon = h * 0.82;
+        const t = reducedMotion ? 0 : elapsed;
+        for (let b = 0; b < 2; b++) {
+          const yy = horizon - 10 - b * 14;
+          const off = ((t * (10 + b * 6)) % (w + 120)) - 60;
+          const grad = ctx.createLinearGradient(off - 80, 0, off + 80, 0);
+          grad.addColorStop(0, 'rgba(16,185,129,0)');
+          grad.addColorStop(0.5, 'rgba(120,230,190,' + (0.06 - b * 0.02) + ')');
+          grad.addColorStop(1, 'rgba(16,185,129,0)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, yy, w, 8);
+        }
+      }
+
+      // Faro esmeralda parpadeante en lo alto de la antena.
+      function drawBeacon() {
+        const bx = w * 0.70, by = h * 0.82 - 42;
+        const on = reducedMotion ? true : (Math.sin(elapsed * 3.2) > 0.2);
+        if (!on) return;
+        ctx.save();
+        ctx.fillStyle = 'rgba(74,246,38,0.95)';
+        ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(74,246,38,0.9)';
+        ctx.shadowBlur = reducedMotion ? 0 : 10;
+        ctx.beginPath(); ctx.arc(bx, by, 2.4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+
+      // Gota: lágrima esmeralda/cian con brillo, o gota ámbar dentada (contaminante).
+      function drawDrop(d) {
+        ctx.save();
+        if (d.acid) {
+          // Gota dentada/peligro: núcleo ámbar, contorno rojo.
+          ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(239,68,68,0.7)';
+          ctx.shadowBlur = reducedMotion ? 0 : 9;
+          ctx.beginPath();
+          const spikes = 7, rr = d.r;
+          for (let i = 0; i < spikes * 2; i++) {
+            const ang = (Math.PI * i) / spikes - Math.PI / 2;
+            const rad = (i % 2 === 0) ? rr : rr * 0.55;
+            const px = d.x + Math.cos(ang) * rad, py = d.y + Math.sin(ang) * rad;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(245,158,11,0.95)';
+          ctx.fill();
+          ctx.lineWidth = 1.4;
+          ctx.strokeStyle = 'rgba(239,68,68,0.95)';
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(120,20,10,0.9)';
+          ctx.beginPath(); ctx.arc(d.x, d.y, rr * 0.3, 0, Math.PI * 2); ctx.fill();
+        } else {
+          // Estela corta (desactivada bajo reducedMotion).
+          if (!reducedMotion) {
+            const tg = ctx.createLinearGradient(d.x, d.y - d.r * 2.4, d.x, d.y);
+            tg.addColorStop(0, 'rgba(74,246,38,0)');
+            tg.addColorStop(1, 'rgba(74,246,38,0.28)');
+            ctx.fillStyle = tg;
+            ctx.beginPath();
+            ctx.moveTo(d.x - d.r * 0.5, d.y);
+            ctx.lineTo(d.x, d.y - d.r * 2.4);
+            ctx.lineTo(d.x + d.r * 0.5, d.y);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // Lágrima esmeralda.
+          ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(74,246,38,0.6)';
+          ctx.shadowBlur = reducedMotion ? 0 : 8;
+          ctx.beginPath();
+          ctx.moveTo(d.x, d.y - d.r * 1.4);
+          ctx.quadraticCurveTo(d.x + d.r, d.y - d.r * 0.2, d.x + d.r * 0.7, d.y + d.r * 0.5);
+          ctx.arc(d.x, d.y + d.r * 0.3, d.r * 0.92, 0.18 * Math.PI, 0.82 * Math.PI, false);
+          ctx.quadraticCurveTo(d.x - d.r, d.y - d.r * 0.2, d.x, d.y - d.r * 1.4);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(52,211,153,0.95)';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          // Brillo especular.
+          ctx.fillStyle = 'rgba(217,255,207,0.8)';
+          ctx.beginPath(); ctx.arc(d.x - d.r * 0.3, d.y, d.r * 0.22, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Colector: cisterna trapezoidal con borde esmeralda, boca de captación,
+      // dithering vertical y brillo. MISMA huella de colisión (x, w, top = y-h).
+      function drawCollector() {
+        const px = paddle.x - paddle.w / 2;
+        const top = paddle.y - paddle.h;
+        ctx.save();
+        ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(74,246,38,0.55)';
+        ctx.shadowBlur = reducedMotion ? 0 : 12;
+        // Cuerpo trapezoidal (ancho abajo, estrecho arriba) dentro de la huella.
+        const inset = 6;
+        ctx.beginPath();
+        ctx.moveTo(px + inset, top);
+        ctx.lineTo(px + paddle.w - inset, top);
+        ctx.lineTo(px + paddle.w, top + paddle.h);
+        ctx.lineTo(px, top + paddle.h);
+        ctx.closePath();
+        const body = ctx.createLinearGradient(0, top, 0, top + paddle.h);
+        body.addColorStop(0, '#0d6b45');
+        body.addColorStop(1, '#063d27');
+        ctx.fillStyle = body;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Borde esmeralda.
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = 'rgba(74,246,38,0.9)';
+        ctx.stroke();
+        // Boca de captación (basin) sobre el cuerpo.
+        ctx.fillStyle = 'rgba(74,246,38,0.85)';
+        ctx.fillRect(px + inset, top - 3, paddle.w - inset * 2, 3);
+        ctx.fillStyle = 'rgba(2,8,5,0.9)';
+        ctx.fillRect(px + inset + 2, top - 2, paddle.w - inset * 2 - 4, 1.5);
+        // Dithering / remaches verticales (textura).
+        ctx.strokeStyle = 'rgba(16,185,129,0.35)';
+        ctx.lineWidth = 1;
+        for (let x = px + 10; x < px + paddle.w - 6; x += 10) {
+          ctx.beginPath();
+          ctx.moveTo(x, top + 3); ctx.lineTo(x, top + paddle.h - 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (p.life <= 0) continue;
+          const a = Math.max(0, p.life / p.maxLife);
+          if (p.kind === 'text') {
+            ctx.save();
+            ctx.globalAlpha = a;
+            ctx.fillStyle = p.color;
+            ctx.font = "bold 15px 'Share Tech Mono', monospace";
+            ctx.textAlign = 'center';
+            if (!reducedMotion) { ctx.shadowColor = 'rgba(74,246,38,0.6)'; ctx.shadowBlur = 6; }
+            ctx.fillText(p.text, p.x, p.y);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.globalAlpha = a;
+            ctx.fillStyle = 'rgba(' + p.color + ',' + a.toFixed(3) + ')';
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+
+      // Medidor gráfico del ACUÍFERO: tanque con nivel de agua animado + superficie ondulada.
+      function drawMeter() {
+        const tw = 54, th = 14, tx = w - tw - 12, ty = 10;
+        ctx.save();
+        // Marco del tanque.
+        ctx.fillStyle = 'rgba(2,8,5,0.6)';
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = 'rgba(74,246,38,0.8)';
+        ctx.strokeRect(tx, ty, tw, th);
+        // Nivel de agua (0..5 -> meterShown interpolado).
+        const frac = Math.max(0, Math.min(1, meterShown / 5));
+        const fillW = (tw - 4) * frac;
+        const low = frac <= 0.4;
+        const col = low ? '245,158,11' : '52,211,153';
+        const grad = ctx.createLinearGradient(tx, 0, tx + tw, 0);
+        grad.addColorStop(0, 'rgba(' + col + ',0.95)');
+        grad.addColorStop(1, 'rgba(' + col + ',0.6)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(tx + 2, ty + 2, fillW, th - 4);
+        // Superficie ondulada sutil en el borde del nivel.
+        if (fillW > 2) {
+          const surfX = tx + 2 + fillW;
+          ctx.strokeStyle = 'rgba(217,255,207,0.7)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let yy = ty + 2; yy <= ty + th - 2; yy += 2) {
+            const wob = reducedMotion ? 0 : Math.sin(elapsed * 6 + yy) * 1.1;
+            if (yy === ty + 2) ctx.moveTo(surfX + wob, yy); else ctx.lineTo(surfX + wob, yy);
+          }
+          ctx.stroke();
+        }
+        // Etiqueta.
+        ctx.fillStyle = 'rgba(122,242,207,0.9)';
+        ctx.font = "9px 'Share Tech Mono', monospace";
+        ctx.textAlign = 'right';
+        ctx.fillText('ACUÍFERO', tx + tw, ty + th + 9);
+        ctx.restore();
+      }
+
+      // Tratamiento CRT barato: modulación de scanlines + viñeta + oscurecido de bordes.
+      function drawCrt() {
+        ctx.save();
+        // Scanlines: filas alternas con alfa bajo (sin bucle por píxel).
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
+        // Leve "curvatura" / viñeta de bordes.
+        const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, 'rgba(0,0,0,0.42)');
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, w, h);
+        // Parpadeo de fósforo muy leve (sólo con movimiento permitido).
+        if (!reducedMotion) {
+          ctx.fillStyle = 'rgba(74,246,38,' + (0.012 + Math.random() * 0.012).toFixed(3) + ')';
+          ctx.fillRect(0, 0, w, h);
+        }
+        ctx.restore();
       }
 
       function drawCenterText(txt, color) {
+        ctx.save();
         ctx.fillStyle = color;
         ctx.font = "16px 'Share Tech Mono', monospace";
         ctx.textAlign = 'center';
+        if (!reducedMotion) { ctx.shadowColor = 'rgba(74,246,38,0.5)'; ctx.shadowBlur = 8; }
         ctx.fillText(txt, w / 2, h / 2);
-        ctx.textAlign = 'left';
+        ctx.restore();
       }
 
       // --- Manejadores (refs bound guardadas para quitarlos en close()) ---
@@ -4281,6 +4788,9 @@
         if (msgTimer) { clearTimeout(msgTimer); msgTimer = null; }
         state = 'idle';
         move.left = false; move.right = false;
+        // Limpieza de estado visual para no arrastrar nada entre sesiones.
+        particles.length = 0; drops = [];
+        shakeT = 0; flashT = 0; powerDown = 0;
         if (overlay) {
           overlay.classList.remove('is-open');
           overlay.setAttribute('aria-hidden', 'true');
@@ -4341,13 +4851,14 @@
         open: function() {
           this.init();
           if (!overlay || !canvas || !ctx) return;
-          if (SfxEngine && SfxEngine.ready) SfxEngine._blip(520, 0.08, 0.1, 'triangle');
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqStart();
           launcherEl = document.querySelector('.aquifer-launch') || document.activeElement;
           overlay.classList.add('is-open');
           overlay.setAttribute('aria-hidden', 'false');
           reducedMotion = reduced();
           // Estado inicial en reposo (el jugador pulsa Iniciar/Espacio).
           state = 'idle'; score = 0; meter = 5; drops = []; move.left = false; move.right = false;
+          meterShown = 5; particles.length = 0; shakeT = 0; flashT = 0; powerDown = 0; elapsed = 0;
           resize();
           updateHud();
           if (startBtn) startBtn.textContent = '▶ Iniciar';
