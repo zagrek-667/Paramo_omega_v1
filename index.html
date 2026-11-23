@@ -144,6 +144,95 @@
     .end-credits-link:hover { color: #10b981; border-bottom-color: #10b981; }
     .end-credits-link:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
 
+    /* ======================================================================
+       MINIJUEGO "GUARDIÁN DEL ACUÍFERO" (aditivo). Botón de lanzamiento dentro
+       del bloque de créditos (sólo en equilibrio_alcanzado) y una capa de juego
+       (#aquifer-overlay) totalmente independiente de #hub-ambient-canvas. Estética
+       consola 80s: fósforo verde #4af626, esmeralda #10b981/#34d399, monoespaciada
+       VT323 / Share Tech Mono (ya cargadas). La capa es position:fixed y sólo
+       interactiva con .is-open; oculta y sin pointer-events por defecto.
+       ====================================================================== */
+    .aquifer-launch {
+      display: inline-block; margin: 20px auto 2px; padding: 11px 20px;
+      font-family: 'Share Tech Mono', 'VT323', monospace; font-size: 14px;
+      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+      color: #4af626; background: rgba(6, 20, 10, 0.55);
+      border: 1px solid rgba(74, 246, 38, 0.55); border-radius: 8px;
+      text-shadow: 0 0 6px rgba(74, 246, 38, 0.55);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.25), inset 0 0 12px rgba(74, 246, 38, 0.08);
+      transition: color .25s var(--ease), background .25s var(--ease), box-shadow .25s var(--ease), transform .25s var(--ease);
+    }
+    .aquifer-launch:hover {
+      color: #d9ffcf; background: rgba(16, 185, 129, 0.18);
+      box-shadow: 0 0 28px rgba(74, 246, 38, 0.45), inset 0 0 16px rgba(74, 246, 38, 0.15);
+      transform: translateY(-1px);
+    }
+    .aquifer-launch:focus-visible { outline: 2px solid #4af626; outline-offset: 3px; }
+
+    #aquifer-overlay {
+      position: fixed; inset: 0; z-index: 9500; display: none;
+      pointer-events: none; opacity: 0;
+      background: radial-gradient(ellipse at center, #06130c 0%, #020805 70%, #000 100%);
+      color: #4af626; font-family: 'Share Tech Mono', 'VT323', monospace;
+      transition: opacity .3s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    #aquifer-overlay.is-open { display: flex; pointer-events: auto; opacity: 1; }
+    .aquifer-stage {
+      position: relative; margin: auto; display: flex; flex-direction: column;
+      align-items: center; gap: 12px; width: min(92vw, 560px); padding: 10px;
+    }
+    .aquifer-hud {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      font-size: clamp(13px, 3.4vw, 17px); letter-spacing: 2px; text-transform: uppercase;
+      text-shadow: 0 0 6px rgba(74, 246, 38, 0.5);
+    }
+    .aquifer-hud .aquifer-meter { color: #34d399; }
+    .aquifer-canvas-wrap {
+      position: relative; width: 100%;
+      border: 1px solid rgba(74, 246, 38, 0.4); border-radius: 10px; overflow: hidden;
+      box-shadow: 0 0 36px rgba(16, 185, 129, 0.22), inset 0 0 40px rgba(0, 0, 0, 0.6);
+    }
+    #aquifer-canvas { display: block; width: 100%; height: auto; background: #030a06; touch-action: none; }
+    /* Scanlines + viñeta SUTILES sobre el lienzo; no capturan eventos. */
+    .aquifer-canvas-wrap::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 10px;
+      background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.14) 3px, rgba(0,0,0,0) 4px),
+        radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.5) 100%);
+      opacity: 0.6;
+    }
+    #aquifer-msg {
+      min-height: 1.4em; text-align: center; font-size: clamp(13px, 3.6vw, 18px);
+      letter-spacing: 1.5px; color: #d9ffcf; text-shadow: 0 0 8px rgba(74, 246, 38, 0.5);
+    }
+    .aquifer-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .aquifer-btn {
+      font-family: 'Share Tech Mono', 'VT323', monospace; font-size: 15px;
+      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+      color: #4af626; background: rgba(6, 20, 10, 0.6);
+      border: 1px solid rgba(74, 246, 38, 0.5); border-radius: 8px; padding: 10px 16px;
+      text-shadow: 0 0 6px rgba(74, 246, 38, 0.45);
+      transition: color .2s var(--ease), background .2s var(--ease), box-shadow .2s var(--ease);
+      -webkit-user-select: none; user-select: none; touch-action: manipulation;
+    }
+    .aquifer-btn:hover, .aquifer-btn:active {
+      color: #d9ffcf; background: rgba(16, 185, 129, 0.2);
+      box-shadow: 0 0 20px rgba(74, 246, 38, 0.4);
+    }
+    .aquifer-btn:focus-visible { outline: 2px solid #4af626; outline-offset: 3px; }
+    .aquifer-touch { display: none; width: 100%; justify-content: space-between; gap: 14px; }
+    .aquifer-touch .aquifer-btn { flex: 1; font-size: 26px; padding: 16px 0; }
+    /* Controles táctiles sólo en punteros gruesos (móvil/tablet). */
+    @media (pointer: coarse) { .aquifer-touch { display: flex; } }
+    @media (prefers-reduced-motion: reduce) {
+      #aquifer-overlay { transition: none; }
+      .aquifer-canvas-wrap::after {
+        background: radial-gradient(ellipse at center, transparent 62%, rgba(0,0,0,0.45) 100%);
+        opacity: 0.4;
+      }
+    }
+
     /* Estado de carga tras pulsar Iniciar: el botón pasa a "Cargando…" mientras el
        video almacena en búfer, para que la pulsación nunca se sienta congelada. */
     .btn-intro-start.is-loading { cursor: progress; opacity: 0.9; }
@@ -2104,6 +2193,31 @@
     </div>
   </div>
 
+  <!-- MINIJUEGO "GUARDIÁN DEL ACUÍFERO" (aditivo). Capa independiente de
+       #hub-ambient-canvas: position:fixed, oculta y sin pointer-events hasta que
+       AquiferGame.open() le añade .is-open. Se lanza SÓLO desde el botón de créditos
+       en equilibrio_alcanzado; nunca se auto-abre. -->
+  <div id="aquifer-overlay" aria-hidden="true" role="dialog" aria-label="Minijuego Guardián del Acuífero">
+    <div class="aquifer-stage">
+      <div class="aquifer-hud">
+        <span>Agua: <span id="aquifer-score">0</span></span>
+        <span class="aquifer-meter">Acuífero: <span id="aquifer-meter">5</span></span>
+      </div>
+      <div class="aquifer-canvas-wrap">
+        <canvas id="aquifer-canvas" width="520" height="360" aria-label="Lienzo del minijuego"></canvas>
+      </div>
+      <p id="aquifer-msg">Recoge el agua limpia. Esquiva lo que contamina.</p>
+      <div class="aquifer-touch" aria-hidden="true">
+        <button type="button" id="aquifer-left" class="aquifer-btn" aria-label="Mover a la izquierda">◂</button>
+        <button type="button" id="aquifer-right" class="aquifer-btn" aria-label="Mover a la derecha">▸</button>
+      </div>
+      <div class="aquifer-controls">
+        <button type="button" id="aquifer-start" class="aquifer-btn">▶ Iniciar</button>
+        <button type="button" id="aquifer-close" class="aquifer-btn" aria-label="Salir del minijuego y volver al hub">✕ Salir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- APP 2: REFUGIO ZERO -->
   <div id="refugio-container" class="app-container refugio-scope min-h-screen flex-col">
     <header class="border-b border-[#d4a373]/30 p-4 flex justify-between items-center bg-[#0a0a09]">
@@ -3356,6 +3470,7 @@
               + `<p class="end-credits-small">Realizado en el marco del seminario de Educación en Tecnología, dirigido por el profesor Zergio Fajardo.</p>`
               + `<p class="end-credits-small">Universidad Distrital Francisco José de Caldas</p>`
               + `<p class="end-credits-small">Facultad de Educación</p>`
+              + `<button type="button" class="aquifer-launch" onclick="AquiferGame.open()">▸ Iniciar simulación: Guardián del Acuífero</button>`
               + `</div>`;
           }
 
@@ -3916,6 +4031,357 @@
       };
     })();
 
+    // =========================================
+    // MINIJUEGO "GUARDIÁN DEL ACUÍFERO" (aditivo, autocontenido).
+    // Catcher retro estilo consola 80s atado a la fábula del páramo: una cisterna
+    // recoge gotas de agua limpia (esmeralda/cian, +puntos) y esquiva gotas ácidas/
+    // contaminantes (ámbar/rojo). Capturar ácido o dejar caer agua limpia drena el
+    // medidor del acuífero (5). Game-over al llegar a 0.
+    //   - Capa #aquifer-overlay SEPARADA de #hub-ambient-canvas (fixed, z-index 9500).
+    //   - rAF guardado por un flag `running`, DPR tapado a 1.5 como HubAmbient.
+    //   - open() añade listeners; close() cancela el rAF (anula el handle), limpia el
+    //     flag y QUITA todos los listeners (refs bound guardadas) para que nada quede
+    //     corriendo en segundo plano; pointer-events sólo con .is-open.
+    //   - sonido opcional vía SfxEngine, SIEMPRE gated por SfxEngine.ready.
+    //   - reduced-motion: calma el scanline/flicker (vía CSS) y los rastros.
+    // Sin librerías nuevas ni media: todo se dibuja con Canvas 2D.
+    // =========================================
+    const AquiferGame = window.AquiferGame = (function() {
+      let overlay, canvas, ctx, scoreEl, meterEl, msgEl, startBtn, closeBtn, leftBtn, rightBtn;
+      let wired = false, raf = null, running = false, reducedMotion = false;
+      let w = 0, h = 0, dpr = 1, lastTs = 0;
+      let launcherEl = null; // botón de créditos para devolver el foco al cerrar.
+
+      // Estado de juego.
+      let state = 'idle'; // 'idle' | 'playing' | 'over'
+      let score = 0, meter = 5, spawnTimer = 0, spawnEvery = 0.95, fallBase = 90;
+      let drops = [];
+      const paddle = { x: 0, w: 76, h: 16, speed: 420 };
+      const move = { left: false, right: false };
+
+      const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function resize() {
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        w = Math.max(1, Math.floor(rect.width));
+        h = Math.max(1, Math.floor(rect.height || (rect.width * 0.69)));
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        paddle.y = h - 30;
+        paddle.x = Math.min(Math.max(paddle.x || w / 2, paddle.w / 2), w - paddle.w / 2);
+      }
+
+      function reset() {
+        score = 0; meter = 5; spawnTimer = 0; spawnEvery = 0.95; fallBase = 90;
+        drops = []; paddle.x = w / 2; move.left = false; move.right = false;
+        updateHud();
+      }
+
+      function updateHud() {
+        if (scoreEl) scoreEl.textContent = String(score);
+        if (meterEl) meterEl.textContent = String(Math.max(0, meter));
+      }
+
+      function spawnDrop() {
+        // ~28% contaminante; el resto agua limpia.
+        const acid = Math.random() < 0.28;
+        drops.push({
+          x: 18 + Math.random() * (w - 36),
+          y: -12,
+          r: 9 + Math.random() * 3,
+          vy: fallBase + Math.random() * 40 + score * 1.1, // rampa suave con el puntaje
+          acid: acid
+        });
+      }
+
+      function catchDrop(d) {
+        if (d.acid) {
+          meter -= 1;
+          flashMsg('¡Contaminante! El acuífero cede.');
+          if (SfxEngine && SfxEngine.ready) SfxEngine._blip(150, 0.14, 0.14, 'sawtooth');
+        } else {
+          score += 1;
+          if (score % 10 === 0) { spawnEvery = Math.max(0.42, spawnEvery - 0.06); fallBase += 10; }
+          if (SfxEngine && SfxEngine.ready) SfxEngine._blip(880 + Math.random() * 120, 0.06, 0.16, 'triangle');
+        }
+        updateHud();
+      }
+
+      function missClean() {
+        meter -= 1;
+        flashMsg('El agua limpia se perdió…');
+        if (SfxEngine && SfxEngine.ready) SfxEngine._blip(220, 0.1, 0.12, 'sine');
+        updateHud();
+      }
+
+      let msgTimer = null;
+      function flashMsg(txt) {
+        if (!msgEl) return;
+        msgEl.textContent = txt;
+        if (msgTimer) clearTimeout(msgTimer);
+        msgTimer = setTimeout(() => {
+          if (state === 'playing' && msgEl) msgEl.textContent = '';
+        }, 1100);
+      }
+
+      function gameOver() {
+        state = 'over'; running = false;
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        const good = score >= 20;
+        if (msgEl) msgEl.textContent = good
+          ? 'El acuífero resiste. ' + score + ' gotas a salvo.'
+          : 'El páramo se seca… reintenta. (' + score + ')';
+        if (startBtn) startBtn.textContent = '▶ Reintentar';
+        if (SfxEngine && SfxEngine.ready) {
+          SfxEngine._blip(good ? 660 : 180, 0.18, 0.12, good ? 'triangle' : 'sine');
+          if (good) SfxEngine._blip(990, 0.2, 0.1, 'triangle');
+        }
+        paintFrame(); // deja la última imagen visible.
+      }
+
+      function startGame() {
+        if (!canvas || !ctx) return;
+        reducedMotion = reduced();
+        resize();
+        reset();
+        state = 'playing';
+        if (startBtn) startBtn.textContent = '▶ Reiniciar';
+        if (msgEl) msgEl.textContent = '';
+        if (!running) { running = true; lastTs = 0; raf = requestAnimationFrame(step); }
+      }
+
+      function step(ts) {
+        if (!running) return;
+        if (!lastTs) lastTs = ts;
+        let dt = (ts - lastTs) / 1000;
+        lastTs = ts;
+        if (dt > 0.05) dt = 0.05; // clamp de delta (pestañas en 2º plano / saltos)
+
+        if (state === 'playing') {
+          // Movimiento de la cisterna.
+          let dir = 0;
+          if (move.left) dir -= 1;
+          if (move.right) dir += 1;
+          paddle.x += dir * paddle.speed * dt;
+          paddle.x = Math.min(Math.max(paddle.x, paddle.w / 2), w - paddle.w / 2);
+
+          // Aparición.
+          spawnTimer += dt;
+          if (spawnTimer >= spawnEvery) { spawnTimer = 0; spawnDrop(); }
+
+          // Gotas.
+          const catchY = paddle.y - paddle.h;
+          for (let i = drops.length - 1; i >= 0; i--) {
+            const d = drops[i];
+            d.y += d.vy * dt;
+            const hitX = Math.abs(d.x - paddle.x) <= paddle.w / 2 + d.r;
+            if (d.y + d.r >= catchY && d.y - d.r <= paddle.y && hitX) {
+              catchDrop(d); drops.splice(i, 1); continue;
+            }
+            if (d.y - d.r > h) {
+              if (!d.acid) missClean();
+              drops.splice(i, 1);
+            }
+          }
+          if (meter <= 0) { gameOver(); return; }
+        }
+
+        paintFrame();
+        if (running) raf = requestAnimationFrame(step);
+      }
+
+      function paintFrame() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, w, h);
+        // Línea de "nivel freático" sutil al fondo.
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, h - 8); ctx.lineTo(w, h - 8); ctx.stroke();
+
+        // Gotas.
+        for (let i = 0; i < drops.length; i++) {
+          const d = drops[i];
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+          if (d.acid) {
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.95)'; // ámbar
+            ctx.shadowColor = 'rgba(239, 68, 68, 0.7)';
+          } else {
+            ctx.fillStyle = 'rgba(52, 211, 153, 0.95)'; // esmeralda/cian
+            ctx.shadowColor = 'rgba(74, 246, 38, 0.6)';
+          }
+          ctx.shadowBlur = reducedMotion ? 0 : 8;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // Cisterna / frailejón (paddle).
+        const px = paddle.x - paddle.w / 2;
+        ctx.fillStyle = '#4af626';
+        ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(74, 246, 38, 0.6)';
+        ctx.shadowBlur = reducedMotion ? 0 : 10;
+        ctx.fillRect(px, paddle.y - paddle.h, paddle.w, paddle.h);
+        ctx.shadowBlur = 0;
+        // Borde esmeralda de la cisterna.
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)';
+        ctx.strokeRect(px, paddle.y - paddle.h, paddle.w, paddle.h);
+
+        if (state === 'idle') {
+          drawCenterText('Pulsa Iniciar / Espacio', '#d9ffcf');
+        } else if (state === 'over') {
+          drawCenterText('Espacio o Reintentar', 'rgba(217,255,207,0.85)');
+        }
+      }
+
+      function drawCenterText(txt, color) {
+        ctx.fillStyle = color;
+        ctx.font = "16px 'Share Tech Mono', monospace";
+        ctx.textAlign = 'center';
+        ctx.fillText(txt, w / 2, h / 2);
+        ctx.textAlign = 'left';
+      }
+
+      // --- Manejadores (refs bound guardadas para quitarlos en close()) ---
+      function onKeyDown(e) {
+        const k = e.key;
+        if (k === 'ArrowLeft') { move.left = true; e.preventDefault(); }
+        else if (k === 'ArrowRight') { move.right = true; e.preventDefault(); }
+        else if (k === ' ' || k === 'Enter' || k === 'Spacebar') {
+          e.preventDefault();
+          if (state !== 'playing') startGame();
+        } else if (k === 'Escape') {
+          close();
+        }
+      }
+      function onKeyUp(e) {
+        if (e.key === 'ArrowLeft') move.left = false;
+        else if (e.key === 'ArrowRight') move.right = false;
+      }
+      function pressLeft(v) { return function(e) { move.left = v; if (e && e.cancelable) e.preventDefault(); }; }
+      function pressRight(v) { return function(e) { move.right = v; if (e && e.cancelable) e.preventDefault(); }; }
+      function onCanvasPointer(e) {
+        // Tap/arrastre en una mitad del lienzo mueve la cisterna hacia ese lado.
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        if (x < rect.width / 2) { move.left = true; move.right = false; }
+        else { move.right = true; move.left = false; }
+      }
+      function onCanvasPointerUp() { move.left = false; move.right = false; }
+
+      // Refs estables de los manejadores táctiles.
+      const h_leftDown = pressLeft(true), h_leftUp = pressLeft(false);
+      const h_rightDown = pressRight(true), h_rightUp = pressRight(false);
+
+      function close() {
+        running = false;
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        if (msgTimer) { clearTimeout(msgTimer); msgTimer = null; }
+        state = 'idle';
+        move.left = false; move.right = false;
+        if (overlay) {
+          overlay.classList.remove('is-open');
+          overlay.setAttribute('aria-hidden', 'true');
+        }
+        // QUITAR todos los listeners añadidos en open().
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('resize', onResize);
+        if (startBtn) startBtn.removeEventListener('click', startGame);
+        if (closeBtn) closeBtn.removeEventListener('click', close);
+        if (leftBtn) {
+          leftBtn.removeEventListener('pointerdown', h_leftDown);
+          leftBtn.removeEventListener('pointerup', h_leftUp);
+          leftBtn.removeEventListener('pointerleave', h_leftUp);
+          leftBtn.removeEventListener('pointercancel', h_leftUp);
+        }
+        if (rightBtn) {
+          rightBtn.removeEventListener('pointerdown', h_rightDown);
+          rightBtn.removeEventListener('pointerup', h_rightUp);
+          rightBtn.removeEventListener('pointerleave', h_rightUp);
+          rightBtn.removeEventListener('pointercancel', h_rightUp);
+        }
+        if (canvas) {
+          canvas.removeEventListener('pointerdown', onCanvasPointer);
+          canvas.removeEventListener('pointermove', onCanvasPointerMove);
+          canvas.removeEventListener('pointerup', onCanvasPointerUp);
+          canvas.removeEventListener('pointerleave', onCanvasPointerUp);
+          canvas.removeEventListener('pointercancel', onCanvasPointerUp);
+        }
+        // Devolver el foco al botón de créditos que lo lanzó.
+        if (launcherEl && typeof launcherEl.focus === 'function') { try { launcherEl.focus(); } catch (e) {} }
+      }
+
+      function onResize() { if (canvas && ctx) { resize(); paintFrame(); } }
+      function onCanvasPointerMove(e) {
+        // Sólo reposiciona si hay un botón del puntero presionado (arrastre).
+        if (e.buttons) onCanvasPointer(e);
+      }
+
+      return {
+        // init(): resuelve nodos UNA sola vez. No añade listeners de juego (eso es open()).
+        init: function() {
+          if (wired) return;
+          overlay = document.getElementById('aquifer-overlay');
+          canvas = document.getElementById('aquifer-canvas');
+          if (!overlay || !canvas) return;
+          ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          scoreEl = document.getElementById('aquifer-score');
+          meterEl = document.getElementById('aquifer-meter');
+          msgEl = document.getElementById('aquifer-msg');
+          startBtn = document.getElementById('aquifer-start');
+          closeBtn = document.getElementById('aquifer-close');
+          leftBtn = document.getElementById('aquifer-left');
+          rightBtn = document.getElementById('aquifer-right');
+          wired = true;
+        },
+        open: function() {
+          this.init();
+          if (!overlay || !canvas || !ctx) return;
+          if (SfxEngine && SfxEngine.ready) SfxEngine._blip(520, 0.08, 0.1, 'triangle');
+          launcherEl = document.querySelector('.aquifer-launch') || document.activeElement;
+          overlay.classList.add('is-open');
+          overlay.setAttribute('aria-hidden', 'false');
+          reducedMotion = reduced();
+          // Estado inicial en reposo (el jugador pulsa Iniciar/Espacio).
+          state = 'idle'; score = 0; meter = 5; drops = []; move.left = false; move.right = false;
+          resize();
+          updateHud();
+          if (startBtn) startBtn.textContent = '▶ Iniciar';
+          if (msgEl) msgEl.textContent = 'Recoge el agua limpia. Esquiva lo que contamina.';
+          paintFrame();
+          // Listeners (refs estables para quitarlos en close()).
+          window.addEventListener('keydown', onKeyDown);
+          window.addEventListener('keyup', onKeyUp);
+          window.addEventListener('resize', onResize);
+          if (startBtn) startBtn.addEventListener('click', startGame);
+          if (closeBtn) closeBtn.addEventListener('click', close);
+          if (leftBtn) {
+            leftBtn.addEventListener('pointerdown', h_leftDown);
+            leftBtn.addEventListener('pointerup', h_leftUp);
+            leftBtn.addEventListener('pointerleave', h_leftUp);
+            leftBtn.addEventListener('pointercancel', h_leftUp);
+          }
+          if (rightBtn) {
+            rightBtn.addEventListener('pointerdown', h_rightDown);
+            rightBtn.addEventListener('pointerup', h_rightUp);
+            rightBtn.addEventListener('pointerleave', h_rightUp);
+            rightBtn.addEventListener('pointercancel', h_rightUp);
+          }
+          canvas.addEventListener('pointerdown', onCanvasPointer);
+          canvas.addEventListener('pointermove', onCanvasPointerMove, { passive: true });
+          canvas.addEventListener('pointerup', onCanvasPointerUp, { passive: true });
+          canvas.addEventListener('pointerleave', onCanvasPointerUp, { passive: true });
+          canvas.addEventListener('pointercancel', onCanvasPointerUp, { passive: true });
+          if (closeBtn && typeof closeBtn.focus === 'function') { try { closeBtn.focus(); } catch (e) {} }
+        },
+        close: close
+      };
+    })();
+
     // --- DESBLOQUEO GLOBAL DE AUDIO ---
     let globalAudioUnlocked = false;
     const unlockGlobalAudio = () => {
@@ -3942,6 +4408,9 @@
       HubApp.renderEscena('llegada_paramo');
       // SORPRESA (FEAT-005): inicia el lienzo ambiental del hub (detrás del contenido).
       HubAmbient.init();
+      // MINIJUEGO: resuelve nodos del overlay una vez (no se auto-abre; sólo se lanza
+      // desde el botón de créditos en equilibrio_alcanzado).
+      if (window.AquiferGame) AquiferGame.init();
       // SFX de interacción en la navegación estática del hub (Terminales Remotas y pasos de progreso).
       document.querySelectorAll('.hub-scope .btn-enlace, .hub-scope .progress-step').forEach(btn => {
         btn.addEventListener('mouseenter', () => SfxEngine.hover());
