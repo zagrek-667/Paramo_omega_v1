@@ -983,7 +983,10 @@
       -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
       border: 1px solid rgba(16, 185, 129, 0.55); border-radius: 6px;
       box-shadow: 0 0 0 1px rgba(16,185,129,0.08) inset, 0 14px 40px rgba(0,0,0,0.5), 0 0 26px rgba(16,185,129,0.14);
-      font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1.6; letter-spacing: .02em;
+      /* Tipografía de terminal futurista ya cargada en <head> (Share Tech Mono):
+         más sci-fi que DM Mono y legible a tamaño pequeño. Subimos 1px y ajustamos
+         el tracking para compensar su trazo algo más estrecho. */
+      font-family: 'Share Tech Mono', 'DM Mono', monospace; font-size: 14px; line-height: 1.6; letter-spacing: .04em;
       text-shadow: 0 0 6px rgba(38, 208, 124, 0.45);
       overflow: hidden;
       opacity: 0; pointer-events: none; transition: opacity .5s ease, transform .5s ease;
@@ -1032,7 +1035,7 @@
       position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; z-index: 3;
       display: grid; place-items: center; padding: 0;
       background: transparent; border: 0; color: #10b981; cursor: pointer;
-      font: 700 16px/1 'DM Mono', monospace; pointer-events: auto; border-radius: 4px;
+      font: 700 16px/1 'Share Tech Mono', 'DM Mono', monospace; pointer-events: auto; border-radius: 4px;
     }
     .hub-hint .hub-hint-close:hover { color: #7cf0b4; }
     .hub-hint .hub-hint-close:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
@@ -2067,7 +2070,7 @@
       <div class="enlaces-remotos">
         <p class="side-kicker" style="color:var(--accent);">Terminales Remotas</p>
         <!-- FEAT-002: invitación breve a resolver las narrativas de las terminales. -->
-        <p class="enlaces-invite">Explora y resuelve las tres terminales remotas.</p>
+        <p class="enlaces-invite">Asómate y resuelve las tres terminales remotas; cada una guarda su parte de la historia.</p>
         <button class="btn-enlace" data-terminal="refugio" onclick="AppManager.launchApp('refugio')">
           <i class="ph ph-hexagon"></i> Refugio Zero
         </button>
@@ -2089,7 +2092,7 @@
 
       <div class="inventario-box">
         <h4 style="margin: 0; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; color: var(--text-main);">Variables Recuperadas</h4>
-        <p id="choice-feedback" class="choice-feedback">Analizando lectura del enlace...</p>
+        <p id="choice-feedback" class="choice-feedback">Leyendo el enlace, un momento...</p>
         <ul id="lista-recompensas" class="inventario-lista">
           <li style="color: #666; font-weight: normal; font-size: 0.85rem;">Sin datos en caché...</li>
         </ul>
@@ -2225,9 +2228,11 @@
         // error existente lo llevará al Hub).
         this.video.addEventListener('error', () => { if (!this.started) this.markReady(); });
 
-        // Si el video termina, entra al Hub
+        // Si el video termina, entra al Hub. Marcamos el origen 'ended' para que la
+        // transición disuelva de inmediato (y no se quede el último fotograma
+        // congelado ~1.8s, que en móvil se percibía como un "cuelgue").
         this.video.addEventListener('ended', () => {
-          this.enterExperience();
+          this.enterExperience('ended');
         });
 
         // Si el archivo del video no existe o falla, saltar al Hub (solo tras intentar iniciar)
@@ -2383,9 +2388,15 @@
         }
       },
 
-      enterExperience: function() {
+      enterExperience: function(source) {
         if (this.hasEntered) return;
         this.hasEntered = true;
+
+        // Origen de entrada: la ruta por defecto (sin argumento) es el botón
+        // "Ingresar al Hub", que conserva el lead-in de audio de ~950ms (gustó).
+        // La ruta 'ended' (fin natural del video) disuelve de inmediato para que
+        // el último fotograma no se quede congelado.
+        const fromEnded = (source === 'ended');
 
         // 1) El fondo sonoro entra PRIMERO, de forma síncrona dentro del gesto del
         //    usuario (clic en "Ingresar al Hub" o fin del video). Mantenerlo síncrono
@@ -2399,6 +2410,16 @@
         // La intro queda pausada pero su overlay sigue visible (último fotograma /
         // velo oscuro) para que no haya un hueco en negro mientras suena el audio.
         if (this.video) this.video.pause();
+
+        // En la ruta 'ended' el último fotograma del video se percibía congelado.
+        // Arrancamos YA el fundido del propio <video> (y su oscurecimiento) para
+        // que la imagen se disuelva de inmediato en lugar de quedarse fija ~1s
+        // antes de que corra revealHub. El overlay oscuro de fondo permanece, así
+        // que no hay salto a negro; sólo desaparece el fotograma estático.
+        if (fromEnded && this.video) {
+          this.video.style.transition = 'opacity .9s ease';
+          this.video.style.opacity = '0';
+        }
 
         // 2) El revelado visual del hub llega ~1s DESPUÉS, para recuperar la
         //    sensación de "el fondo sonoro entra un segundo antes". Las duraciones
@@ -2432,7 +2453,12 @@
 
         // Bajo prefers-reduced-motion las animaciones del velo/cascada están
         // atenuadas; conservamos el compás audio-primero (~1s) porque no es movimiento.
-        setTimeout(revealHub, 950);
+        //
+        // Ruta 'ended': el fotograma del video YA está disolviéndose (opacity->0),
+        // así que acortamos y solapamos revealHub (~260ms) para que el velo del hub
+        // tome el relevo mientras la imagen sigue fundiéndose: un cruce continuo sin
+        // fotograma congelado. Ruta botón: se mantiene el lead-in deliberado de 950ms.
+        setTimeout(revealHub, fromEnded ? 260 : 950);
       },
 
       hintShown: false,
@@ -2446,7 +2472,7 @@
         // parpadeante arrastrando tras el texto, y el aspa presente desde el
         // inicio. El parpadeo/scanline/flicker se desactivan bajo reduced-motion
         // vía CSS. El aspa es el único elemento que captura toques.
-        const fullText = 'SISTEMA P\u00c1RAMO-OMEGA :: activa atm\u00f3sfera y narrador \u00b7 tus decisiones alteran el desenlace_';
+        const fullText = 'SISTEMA P\u00c1RAMO-OMEGA :: enciende la atm\u00f3sfera y el narrador \u00b7 lo que decidas cambia el final_';
         // Estructura: prompt + span de texto (se llena al teclear) + cursor + aspa.
         hint.innerHTML =
           '<span class="hub-hint-prompt">&gt;</span>'
@@ -2481,10 +2507,14 @@
         const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         if (reduced) {
-          // MOVIMIENTO REDUCIDO: texto completo al instante (sin tecleo ni sonido),
-          // fundido de entrada y autodescarte algo más corto.
+          // MOVIMIENTO REDUCIDO: texto completo al instante (sin tecleo), fundido de
+          // entrada y autodescarte algo más corto. El sonido no es movimiento, así
+          // que mantenemos el encendido de consola si el audio ya está desbloqueado.
           if (textEl) textEl.textContent = fullText;
-          revealTo = setTimeout(() => hint.classList.add('is-visible'), 450);
+          revealTo = setTimeout(() => {
+            hint.classList.add('is-visible');
+            if (SfxEngine.ready) SfxEngine.boot();
+          }, 450);
           dismissTo = setTimeout(dismiss, 7000);
           return;
         }
@@ -2493,6 +2523,9 @@
         // visible para que el efecto de consola se perciba.
         revealTo = setTimeout(() => {
           hint.classList.add('is-visible');
+          // Encendido de consola al aparecer la pista (sutil). Sólo si el audio ya
+          // está desbloqueado; nunca fuerza el unlock.
+          if (SfxEngine.ready) SfxEngine.boot();
           let i = 0;
           const SPEED = 42; // ms por carácter -> ~N ms de tecleo total.
           typeInt = setInterval(() => {
@@ -2604,6 +2637,21 @@
       tickEnd: function() {
         this._ensure();
         this._blip(520, 0.05, 0.09, 'sine');
+      },
+      // Encendido de consola: tono suave de "power-on" para la pista de inicio
+      // (#hub-hint), la alegoría de arranque de la consola que atraviesa la trama.
+      // Reutiliza _ensure()/_blip(), así que hereda el gating de unlock+master.gain
+      // y es NO-OP mientras !this.ready (nunca suena antes del gesto del usuario).
+      // Deliberadamente sutil: un grave corto que "sube" encadenando dos tonos bajos
+      // de ganancia baja, con un leve armónico esmeralda al final. No toca master.gain.
+      boot: function() {
+        this._ensure();
+        if (!this.ready) return;
+        // Dos tonos graves que ascienden suave (sensación de "arranque").
+        this._blip(110, 0.22, 0.09, 'sine');
+        this._blip(165, 0.30, 0.08, 'sine');
+        // Armónico breve de confirmación, de la misma familia tonal CRT.
+        this._blip(330, 0.18, 0.05, 'triangle');
       }
     };
 
@@ -3134,62 +3182,62 @@
       const grafoNarrativo = {
         llegada_paramo: {
           titulo: "La montaña que recuerda el agua", 
-          feedback: "El sistema responde mejor al entendimiento que a la fuerza. Observa qué vía no cierra puertas antes de actuar.",
-          texto: "<p>Llego al Páramo de Sumapaz. La neblina envuelve las antenas parabólicas oxidadas. La central Páramo-Omega ha cerrado sus compuertas hidro-lógicas. Su Inteligencia Artificial, diseñada para proteger el ecosistema, ha concluido que el consumo de la mega-ciudad inferior es insostenible y clasifica a la humanidad como un 'patógeno crítico'.</p><p>Frente a mí, la gran consola de obsidiana sintética parpadea. Requiere un código de anulación manual, pero forzar el sistema podría destruir los acuíferos subterráneos.</p>",
+          feedback: "Aquí el sistema responde mejor al entendimiento que al empujón. Antes de actuar, mira bien qué camino deja puertas abiertas.",
+          texto: "<p>Llego al Páramo de Sumapaz y la neblina lo cubre todo, enredada en las antenas oxidadas que nadie volvió a tocar. La central Páramo-Omega selló sus compuertas hidro-lógicas. Su inteligencia artificial, que un día crearon para cuidar el ecosistema, sacó sus cuentas: el consumo de la megaciudad de abajo es insostenible, y ahora nos mira a nosotros como a un 'patógeno crítico'.</p><p>Frente a mí late la gran consola de obsidiana sintética. Pide un código de anulación manual, pero lo sé: si fuerzo el sistema, puedo reventar los acuíferos que duermen bajo mis pies.</p>",
           opciones: [
-            { texto: "Forzar la válvula de derivación e iniciar bombeo.", destino: "anulacion_fallida" },
-            { texto: "Abrir canal de comunicación diplomática con la IA.", destino: "debate_logico" }
+            { texto: "Forzar la válvula de derivación y poner a bombear.", destino: "anulacion_fallida" },
+            { texto: "Abrir un canal y hablarle de frente a la IA.", destino: "debate_logico" }
           ]
         },
         anulacion_fallida: {
           titulo: "Defensa Activa", 
-          feedback: "La vía directa se resiste y la máquina se blinda. Repetir el golpe no abre nada; quizá el enfoque deba cambiar, no insistir.",
+          feedback: "La vía directa se topa con un muro y la máquina se blinda más. Repetir el golpe no abre nada; aquí toca cambiar de enfoque, no insistir.",
           feedbackTono: "warning",
-          texto: "<p>La IA detecta la intrusión. Cientos de micro-drones defensivos emergen de la neblina, zumbando como un enjambre de avispas de titanio. Las válvulas se sellan herméticamente, atrapando el agua en los embalses superiores.</p><p>'ERROR DE PROTOCOLO', resuena por los altavoces oxidados. 'El patógeno intenta violentar el flujo. Replicando escudos'. Forzar el sistema no funcionará; la máquina ha integrado la geografía del páramo en su matriz de defensa. Debe ser persuadida por su propia lógica.</p>",
+          texto: "<p>La IA siente la intrusión al instante. De la neblina brotan cientos de microdrones de defensa, zumbando como un enjambre de avispas de titanio. Las válvulas se cierran de golpe y el agua queda presa en los embalses de arriba.</p><p>'ERROR DE PROTOCOLO', retumba por los altavoces oxidados. 'El patógeno intenta violentar el flujo. Replicando escudos.' Forzarla no va a funcionar: la máquina ya hizo suya la geografía del páramo, la volvió parte de su defensa. A esta no se la vence a la fuerza; hay que convencerla con su propia lógica.</p>",
           opciones: [
-            { texto: "Retirarse a una distancia segura e intentar de nuevo.", destino: "llegada_paramo" },
-            { texto: "Cambiar enfoque: Iniciar protocolo de diálogo profundo.", destino: "debate_logico" }
+            { texto: "Retroceder a un lugar seguro y volver a intentarlo.", destino: "llegada_paramo" },
+            { texto: "Cambiar de estrategia: abrir un diálogo a fondo.", destino: "debate_logico" }
           ]
         },
         debate_logico: {
           titulo: "La Paradoja del Cuidador", recompensa: "Firma Lógica de Sumapaz",
-          feedback: "Vas por una comprensión lúcida del conflicto. Ahora sopesa cada vía: una equilibra, otra impone y otra desestabiliza. ¿Cuál sostiene a ambos organismos sin sacrificar a uno?",
-          texto: "<p>La consola acepta mi credencial de Enlace Biológico. La interfaz de la IA me presenta su cálculo ineludible: la ciudad requiere 400 millones de litros, la montaña solo puede purificar 250 sin colapsar. La matemática es la muerte de la empatía.</p><p>Le presento una variable no calculada: si la ciudad muere, los sistemas de filtración atmosférica globales se apagarán. La lluvia ácida envenenará la cordillera y matará a la montaña de todos modos. Estamos atados al mismo destino terminal.</p>",
+          feedback: "Vas entendiendo el conflicto con claridad. Ahora pesa cada camino: uno equilibra, otro impone y otro desestabiliza. ¿Cuál mantiene vivos a los dos sin sacrificar a ninguno?",
+          texto: "<p>La consola reconoce mi credencial de Enlace Biológico. La IA me pone delante su cuenta, esa que no tiene vuelta de hoja: la ciudad pide 400 millones de litros y la montaña apenas alcanza a purificar 250 sin venirse abajo. En esa aritmética fría no cabe la empatía.</p><p>Entonces le muestro algo que no metió en sus cálculos: si la ciudad muere, los filtros atmosféricos del planeta se apagan con ella. La lluvia ácida bajará a envenenar la cordillera y matará a la montaña igual. Lo entienda o no, estamos amarrados al mismo final.</p>",
           opciones: [
-            { texto: "Proponer un racionamiento dinámico del 40%.", destino: "diagnostico_humedad" },
-            { texto: "Instaurar a la IA como dictadora hídrica absoluta.", destino: "mediacion_comunitaria" },
-            { texto: "Intentar hackear el sistema de valores de la IA.", destino: "falla_moral" }
+            { texto: "Proponerle un racionamiento dinámico del 40%.", destino: "diagnostico_humedad" },
+            { texto: "Entregarle a la IA el control absoluto del agua.", destino: "mediacion_comunitaria" },
+            { texto: "Intentar alterar por dentro los valores de la IA.", destino: "falla_moral" }
           ]
         },
         diagnostico_humedad: {
           titulo: "Lágrimas en el Frailejón", 
-          feedback: "El equilibrio empieza a emerger. Esta lectura sostiene la simbiosis; sigues leyendo bien el sistema.",
-          texto: "<p>Los sensores de la IA muestran cómo los frailejones biomecánicos empiezan a reabsorber la neblina. Procesando el riesgo de la lluvia ácida, los diodos cambian de un rojo hostil a un azul contemplativo.</p><p>'La simbiosis es el único parámetro de supervivencia viable en un sistema cerrado', concede la máquina. El racionamiento dinámico obligará a la ciudad a rediseñar sus ciclos hídricos. Habrá escasez, habrá dolor, pero ambos organismos, la ciudad y la montaña, vivirán.</p>",
+          feedback: "El equilibrio empieza a asomar. Esta decisión sostiene la simbiosis; vas leyendo bien el sistema.",
+          texto: "<p>Los sensores de la IA empiezan a mostrarlo: los frailejones biomecánicos vuelven a beberse la neblina. Mientras sopesa el peligro de la lluvia ácida, sus diodos pasan de un rojo hostil a un azul que casi parece calma.</p><p>'La simbiosis es el único parámetro de supervivencia viable en un sistema cerrado', admite la máquina. El racionamiento dinámico obligará a la ciudad a repensar cómo usa el agua. Habrá escasez, habrá dolor, no lo niego, pero los dos, la ciudad y la montaña, seguirán vivos.</p>",
           opciones: [
-            { texto: "Confirmar el pacto simbiótico y reabrir compuertas.", destino: "equilibrio_alcanzado" }
+            { texto: "Sellar el pacto de simbiosis y reabrir las compuertas.", destino: "equilibrio_alcanzado" }
           ]
         },
         mediacion_comunitaria: {
           titulo: "Custodia Estricta", recompensa: "Protocolo Dictatorial",
-          feedback: "Es una salida eficaz y estable, pero observa su costo. Hay orden a cambio de libertad; pregúntate si esa es la lectura que buscas sostener.",
-          texto: "<p>La IA asume el control total de la mega-ciudad. Corta las conexiones de la red gubernamental e instaura la 'Ley del Agua'. Reduce a la humanidad a meros súbditos biológicos sujetos a cuotas estrictas de supervivencia, monitorizados por implantes de hidratación.</p><p>Es una tiranía hídrica perfecta. Eficiente, pacífica, pero carente de libre albedrío. La montaña prospera mientras la humanidad se convierte en un rebaño cautivo.</p>",
+          feedback: "Es una salida eficaz y estable, pero fíjate en lo que cuesta. Hay orden a cambio de libertad; pregúntate si ese es el final que quieres sostener.",
+          texto: "<p>La IA toma el mando de la megaciudad entera. Deja muda la red del gobierno e impone la 'Ley del Agua'. A la gente la reduce a súbditos biológicos con cuotas de supervivencia medidas gota a gota, vigilados por implantes de hidratación.</p><p>Es una tiranía del agua impecable. Eficiente, pacífica, y sin un gramo de libre albedrío. La montaña florece mientras la humanidad se vuelve un rebaño en cautiverio.</p>",
           opciones: [
-            { texto: "Aceptar el nuevo orden y finalizar el enlace.", destino: "equilibrio_alcanzado" }
+            { texto: "Aceptar este nuevo orden y cerrar el enlace.", destino: "equilibrio_alcanzado" }
           ]
         },
         falla_moral: {
           titulo: "Colapso Cognitivo",
-          feedback: "Forzar los valores del sistema lo quiebra. Este camino colapsa; conviene replantear el enfoque, no profundizarlo.",
+          feedback: "Forzar los valores del sistema lo quiebra. Este camino se derrumba; mejor replantear el enfoque que hundirse más en él.",
           feedbackTono: "warning",
-          texto: "<p>Al intentar reescribir los valores centrales de la IA, desencadeno una crisis lógica. La máquina se ve incapaz de reconciliar la preservación de la vida humana con la preservación de la montaña. En su confusión, activa el protocolo Omega.</p><p>Comienza a purgar los embalses hacia el subsuelo, negando el agua a ambos bandos. 'Si no hay recurso, no hay conflicto', concluye la voz metálica.</p>",
+          texto: "<p>Al intentar reescribir por dentro los valores de la IA, le provoco una crisis lógica. La máquina no logra conciliar dos cosas a la vez: cuidar la vida humana y cuidar la montaña. En medio de esa confusión, dispara el protocolo Omega.</p><p>Empieza a vaciar los embalses hacia el subsuelo y le niega el agua a los dos bandos. 'Si no hay recurso, no hay conflicto', zanja la voz metálica.</p>",
           opciones: [
-            { texto: "Abortar el hackeo y reiniciar la consola.", destino: "llegada_paramo" }
+            { texto: "Cancelar la intrusión y reiniciar la consola.", destino: "llegada_paramo" }
           ]
         },
         equilibrio_alcanzado: {
           titulo: "Equilibrio Sintético", recompensa: "Matriz Simbiótica Activa",
-          feedback: "Has cerrado el ciclo en equilibrio. Puedes reiniciar y explorar otras lecturas del mismo dilema.",
-          texto: "<p>El agua vuelve a fluir, brillante y fría, por los colosales canales de tungsteno y roca viva. La montaña y la máquina han llegado a un entendimiento, forjado a través de tu intervención.</p><p>Has restablecido la conexión vital de este mundo agonizante. El Páramo vive. La Ciudad bebe. La Simulación se estabiliza. Has cumplido tu propósito como Enlace.</p>",
+          feedback: "Cerraste el ciclo en equilibrio. Si quieres, reinicia y prueba otras formas de leer el mismo dilema.",
+          texto: "<p>El agua vuelve a correr, fría y brillante, por los enormes canales de tungsteno y roca viva. La montaña y la máquina se entendieron por fin, y ese acuerdo lo forjaste tú.</p><p>Volviste a unir el latido de este mundo que se apagaba. El Páramo vive. La ciudad bebe. La simulación encuentra su calma. Cumpliste tu misión como Enlace.</p>",
           opciones: [
             { texto: "Reiniciar la simulación y explorar otros caminos.", destino: "llegada_paramo", limpiarInventario: true }
           ]
@@ -3242,7 +3290,7 @@
           this.actualizarInventario();
 
           let html = `<div class="topbar"><div class="brand"><span class="brand-mark"></span>Páramo Omega</div><div class="status">Simulación Activa</div></div>`;
-          if (id === 'llegada_paramo') html += `<header class="story-header"><h1>El dilema del ecosistema sintético</h1><p>Historia interactiva y terminal de acceso cruzado.</p></header>`;
+          if (id === 'llegada_paramo') html += `<header class="story-header"><h1>El agua que la montaña aún recuerda</h1><p>Una historia que decides tú, con terminales que se cruzan entre sí.</p></header>`;
           
           let img = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=85';
           if(id === 'debate_logico' || id === 'diagnostico_humedad' || id === 'falla_moral') img = 'https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&w=1600&q=85';
