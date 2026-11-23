@@ -198,6 +198,25 @@
     }
     .aquifer-hud .aquifer-meter { color: #34d399; text-shadow: 0 0 6px rgba(16, 185, 129, 0.55); }
     .aquifer-hud .aquifer-meter #aquifer-meter { color: #7ff2cf; text-shadow: 0 0 8px rgba(16, 185, 129, 0.7); }
+    /* HUD ampliado (FEAT-001): combo, nivel y badge de multiplicador. Se reparte en
+       varias columnas; en móvil hace wrap pero mantiene el bisel/estética CRT. */
+    .aquifer-hud { gap: 4px 12px; flex-wrap: wrap; justify-content: center; }
+    .aquifer-hud > span { white-space: nowrap; }
+    .aquifer-hud #aquifer-combo { color: #d9ffcf; text-shadow: 0 0 8px rgba(74, 246, 38, 0.7); }
+    .aquifer-hud #aquifer-level { color: #7ff2cf; text-shadow: 0 0 8px rgba(16, 185, 129, 0.7); }
+    /* Badge de multiplicador: aparece sólo cuando x>1 (gestionado por updateHud). */
+    .aquifer-mult {
+      display: inline-block; margin-left: 7px; padding: 1px 6px; border-radius: 5px;
+      font-size: 0.82em; color: #ffe9a8; background: rgba(60, 44, 8, 0.6);
+      border: 1px solid rgba(245, 200, 90, 0.6);
+      text-shadow: 0 0 8px rgba(245, 200, 90, 0.75);
+      animation: aquifer-mult-glow 1.6s ease-in-out infinite;
+    }
+    .aquifer-mult[hidden] { display: none; }
+    @keyframes aquifer-mult-glow {
+      0%, 100% { box-shadow: 0 0 6px rgba(245, 200, 90, 0.35); }
+      50% { box-shadow: 0 0 14px rgba(245, 200, 90, 0.75); }
+    }
     .aquifer-canvas-wrap {
       position: relative; width: 100%;
       /* Bisel de consola 80s: marco oscuro con reflejo interior y halo exterior. */
@@ -259,6 +278,7 @@
         opacity: 0.4;
       }
       #aquifer-msg { animation: none; text-shadow: 0 0 8px rgba(74, 246, 38, 0.5); }
+      .aquifer-mult { animation: none; box-shadow: 0 0 6px rgba(245, 200, 90, 0.35); }
     }
 
     /* Estado de carga tras pulsar Iniciar: el botón pasa a "Cargando…" mientras el
@@ -2228,7 +2248,9 @@
   <div id="aquifer-overlay" aria-hidden="true" role="dialog" aria-label="Minijuego Guardián del Acuífero">
     <div class="aquifer-stage">
       <div class="aquifer-hud">
-        <span>Agua: <span id="aquifer-score">0</span></span>
+        <span class="aquifer-hud-score">Agua: <span id="aquifer-score">0</span><span class="aquifer-mult" id="aquifer-mult" hidden>x1</span></span>
+        <span class="aquifer-hud-combo">Combo: <span id="aquifer-combo">0</span></span>
+        <span class="aquifer-hud-level">Nivel: <span id="aquifer-level">1</span></span>
         <span class="aquifer-meter">Acuífero: <span id="aquifer-meter">5</span></span>
       </div>
       <div class="aquifer-canvas-wrap">
@@ -2882,6 +2904,35 @@
         if (!this.ready) return;
         this._blip(330, 0.07, 0.10, 'triangle');
         this._blip(495, 0.10, 0.09, 'triangle');
+      },
+      // Gota dorada (bonus): campanita brillante de dos tonos agudos.
+      aqGolden: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(988, 0.07, 0.11, 'triangle');
+        this._blip(1319, 0.11, 0.09, 'triangle');
+      },
+      // Ficha frailejón (filtro/escudo): hinchazón protectora suave y cálida.
+      aqFilter: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(392, 0.10, 0.10, 'sine');
+        this._blip(587, 0.14, 0.09, 'triangle');
+      },
+      // Combo al alza: confirmación ascendente breve (sube con el multiplicador).
+      aqCombo: function(mult) {
+        this._ensure();
+        if (!this.ready) return;
+        const base = 523 + (Math.max(1, mult || 1) - 1) * 90;
+        this._blip(base, 0.05, 0.09, 'triangle');
+        this._blip(base * 1.26, 0.07, 0.08, 'triangle');
+      },
+      // Aviso de lluvia ácida: alerta tensa de dos graves oscilantes.
+      aqWarn: function() {
+        this._ensure();
+        if (!this.ready) return;
+        this._blip(196, 0.16, 0.12, 'sawtooth');
+        this._blip(165, 0.20, 0.10, 'square');
       }
     };
 
@@ -4132,16 +4183,33 @@
     // =========================================
     const AquiferGame = window.AquiferGame = (function() {
       let overlay, canvas, ctx, scoreEl, meterEl, msgEl, startBtn, closeBtn, leftBtn, rightBtn;
+      let comboEl, levelEl, multEl; // HUD ampliado (FEAT-001).
       let wired = false, raf = null, running = false, reducedMotion = false;
       let w = 0, h = 0, dpr = 1, lastTs = 0;
       let launcherEl = null; // botón de créditos para devolver el foco al cerrar.
 
+      const METER_MAX = 5;        // capacidad del acuífero (tope para el power-up filtro).
+
       // Estado de juego.
       let state = 'idle'; // 'idle' | 'playing' | 'over'
-      let score = 0, meter = 5, spawnTimer = 0, spawnEvery = 0.95, fallBase = 90;
+      let score = 0, meter = METER_MAX, spawnTimer = 0, spawnEvery = 0.95, fallBase = 90;
       let drops = [];
       const paddle = { x: 0, w: 76, h: 16, speed: 420 };
       const move = { left: false, right: false };
+
+      // --- Progresión / combo / power-ups (FEAT-001, aditivo a la mecánica base) ---
+      let combo = 0, multiplier = 1, maxCombo = 0;    // racha y multiplicador de puntaje.
+      let level = 1, levelCleanBase = 0;              // nivel/oleada; base de puntos para avanzar.
+      let shield = false;                             // escudo del filtro (absorbe 1 impacto).
+      let bannerText = '', bannerT = 0;               // banner centrado "NIVEL N" / avisos.
+      let bannerStrong = false;                       // banner con estilo de alerta (lluvia ácida).
+      let acidRainT = 0, acidRainCooldown = 10;       // ráfaga de lluvia ácida activa / enfriamiento.
+      let acidWarnT = 0;                              // telegrafiado previo a la ráfaga.
+      let boot = 0;                                   // floreo de encendido CRT al abrir (0..1 restante).
+      let sessionBest = 0;                            // mejor de la sesión (en memoria, sin persistencia).
+      const LEVEL_STEP = 12;                          // puntos limpios por nivel.
+      const ACID_RAIN_DUR = 3.2;                      // duración de la ráfaga.
+      const ACID_WARN_DUR = 1.1;                      // telegrafiado antes de la ráfaga.
 
       // --- Estado visual (sólo render; no afecta la mecánica ni el catch math) ---
       let elapsed = 0;            // tiempo acumulado para mist/beacon/olas.
@@ -4201,11 +4269,24 @@
       }
 
       function reset() {
-        score = 0; meter = 5; spawnTimer = 0; spawnEvery = 0.95; fallBase = 90;
+        score = 0; meter = METER_MAX; spawnTimer = 0; spawnEvery = 0.95; fallBase = 90;
         drops = []; paddle.x = w / 2; move.left = false; move.right = false;
-        particles.length = 0; meterShown = 5;
+        particles.length = 0; meterShown = METER_MAX;
         shakeT = 0; shakeMag = 0; flashT = 0; powerDown = 0;
+        // Reinicio del estado de profundidad (no borra sessionBest, que persiste en memoria).
+        combo = 0; multiplier = 1; maxCombo = 0;
+        level = 1; levelCleanBase = 0; shield = false;
+        bannerText = ''; bannerT = 0; bannerStrong = false;
+        acidRainT = 0; acidRainCooldown = 10; acidWarnT = 0;
         updateHud();
+      }
+
+      // Mapea la racha a un multiplicador de puntaje (x1 base, x2 a 5, x3 a 10, x4 a 18).
+      function multFor(c) {
+        if (c >= 18) return 4;
+        if (c >= 10) return 3;
+        if (c >= 5) return 2;
+        return 1;
       }
 
       // Precomputa el fondo estático (cielo + cordilleras + frailejones + antenas)
@@ -4314,48 +4395,182 @@
       function updateHud() {
         if (scoreEl) scoreEl.textContent = String(score);
         if (meterEl) meterEl.textContent = String(Math.max(0, meter));
+        if (comboEl) comboEl.textContent = String(combo);
+        if (levelEl) levelEl.textContent = String(level);
+        if (multEl) {
+          if (multiplier > 1) { multEl.textContent = 'x' + multiplier; multEl.hidden = false; }
+          else { multEl.hidden = true; }
+        }
       }
 
       function spawnDrop() {
-        // ~28% contaminante; el resto agua limpia.
-        const acid = Math.random() < 0.28;
+        // Tipos: 'clean' (base), 'acid' (~28% de lo normal), 'golden' (bonus raro),
+        // 'filter' (frailejón, raro). Durante la lluvia ácida sube la proporción de ácido.
+        let type;
+        const rainActive = acidRainT > 0;
+        const r = Math.random();
+        if (rainActive) {
+          // Ráfaga: mayoría ácida, pero NUNCA 100% para que siga siendo justa.
+          type = (r < 0.70) ? 'acid' : 'clean';
+        } else if (r < 0.04) {
+          type = 'golden';        // ~4% gota dorada (bonus).
+        } else if (r < 0.08) {
+          type = 'filter';        // ~4% ficha frailejón (filtro/escudo).
+        } else if (r < 0.08 + 0.28 * 0.92) {
+          // ~28% del resto es contaminante (banda original preservada).
+          type = 'acid';
+        } else {
+          type = 'clean';
+        }
         drops.push({
           x: 18 + Math.random() * (w - 36),
           y: -12,
-          r: 9 + Math.random() * 3,
+          r: (type === 'golden' || type === 'filter') ? 10 + Math.random() * 2 : 9 + Math.random() * 3,
           vy: fallBase + Math.random() * 40 + score * 1.1, // rampa suave con el puntaje
-          acid: acid
+          type: type,
+          acid: type === 'acid' // compat: colisión/vfx existentes consultan d.acid.
         });
       }
 
+      // Suma puntos limpios/bonus aplicando el multiplicador y avanza el combo + nivel.
+      function awardClean(basepoints, d) {
+        combo += 1;
+        if (combo > maxCombo) maxCombo = combo;
+        const prevMult = multiplier;
+        multiplier = multFor(combo);
+        const gained = basepoints * multiplier;
+        score += gained;
+        // Avance de nivel por puntos limpios acumulados (tie-in con la rampa, sin doble conteo).
+        if (score - levelCleanBase >= LEVEL_STEP) { levelCleanBase = score; levelUp(); }
+        if (multiplier > prevMult) {
+          popup(paddle.x, paddle.y - paddle.h - 30, 'COMBO x' + multiplier, '#ffe9a8');
+          if (!reducedMotion) burst(paddle.x, paddle.y - paddle.h, '245,200,90', 8, 110);
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqCombo(multiplier);
+        }
+        return gained;
+      }
+
+      // Rompe la racha (miss o ácido): combo a 0, multiplicador a x1.
+      function breakCombo() { combo = 0; multiplier = 1; }
+
       function catchDrop(d) {
-        if (d.acid) {
-          meter -= 1;
-          flashMsg('¡Contaminante! El acuífero cede.');
-          burst(d.x, d.y, '239,68,68', 10, 120);
-          triggerHit('rgba(239,68,68,');
-          if (SfxEngine && SfxEngine.ready) SfxEngine.aqAcid();
-        } else {
-          score += 1;
-          burst(d.x, d.y, '52,211,153', 8, 90);
-          popup(d.x, d.y - 4, '+1', '#baffb0');
-          if (SfxEngine && SfxEngine.ready) SfxEngine.aqCatch();
-          if (score % 10 === 0) {
-            spawnEvery = Math.max(0.42, spawnEvery - 0.06); fallBase += 10;
-            popup(paddle.x, paddle.y - paddle.h - 18, '+' + score, '#7ff2cf');
-            if (SfxEngine && SfxEngine.ready) SfxEngine.aqLevel();
+        const type = d.type || (d.acid ? 'acid' : 'clean');
+        if (type === 'acid') {
+          if (shield) {
+            // El filtro absorbe el impacto UNA vez: no drena, no rompe el combo.
+            shield = false;
+            flashMsg('El filtro neutralizó el ácido.');
+            burst(d.x, d.y, '122,242,207', 10, 120);
+            popup(d.x, d.y - 4, 'FILTRADO', '#7ff2cf');
+            if (SfxEngine && SfxEngine.ready) SfxEngine.aqFilter();
+          } else {
+            meter -= 1;
+            breakCombo();
+            flashMsg('¡Contaminante! El acuífero cede.');
+            burst(d.x, d.y, '239,68,68', 10, 120);
+            triggerHit('rgba(239,68,68,');
+            if (SfxEngine && SfxEngine.ready) SfxEngine.aqAcid();
           }
+        } else if (type === 'golden') {
+          const g = awardClean(5, d);
+          burst(d.x, d.y, '245,200,90', 12, 120);
+          popup(d.x, d.y - 4, '+' + g, '#ffe9a8');
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqGolden();
+          maybeRamp();
+        } else if (type === 'filter') {
+          // Power-up frailejón: concede un escudo breve; si ya hay escudo, repone +1 acuífero.
+          if (!shield) {
+            shield = true;
+            flashMsg('Filtro frailejón: escudo activo.');
+            popup(d.x, d.y - 4, 'ESCUDO', '#7ff2cf');
+          } else if (meter < METER_MAX) {
+            meter = Math.min(METER_MAX, meter + 1);
+            flashMsg('El acuífero recupera nivel.');
+            popup(d.x, d.y - 4, '+1 ACUÍFERO', '#7ff2cf');
+          } else {
+            flashMsg('Filtro frailejón asegurado.');
+            popup(d.x, d.y - 4, 'FILTRO', '#7ff2cf');
+          }
+          burst(d.x, d.y, '122,242,207', 10, 100);
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqFilter();
+        } else {
+          const g = awardClean(1, d);
+          burst(d.x, d.y, '52,211,153', 8, 90);
+          popup(d.x, d.y - 4, '+' + g, '#baffb0');
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqCatch();
+          maybeRamp();
         }
         updateHud();
       }
 
+      // Rampa de dificultad cada 10 puntos (preserva el comportamiento original).
+      let lastRampScore = 0;
+      function maybeRamp() {
+        if (score - lastRampScore >= 10) {
+          lastRampScore = score - (score % 10);
+          spawnEvery = Math.max(0.42, spawnEvery - 0.06); fallBase += 10;
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqLevel();
+        }
+      }
+
+      // Avance de nivel/oleada: banner, paso de dificultad legible y SFX.
+      function levelUp() {
+        level += 1;
+        spawnEvery = Math.max(0.40, spawnEvery - 0.03); fallBase += 6;
+        showBanner((Math.random() < 0.5 ? 'NIVEL ' : 'OLEADA ') + level, false);
+        if (SfxEngine && SfxEngine.ready) SfxEngine.aqLevel();
+      }
+
+      // Banner centrado temporal (nivel / aviso). Duración ~1.6s; avisos marcados fuerte.
+      function showBanner(txt, strong) {
+        bannerText = txt; bannerStrong = !!strong;
+        bannerT = strong ? ACID_WARN_DUR + 0.3 : 1.6;
+      }
+
       function missClean() {
+        if (shield) {
+          // El escudo del filtro también cubre una pérdida de agua limpia.
+          shield = false;
+          flashMsg('El filtro cubrió la fuga.');
+          burst(paddle.x, paddle.y - paddle.h, '122,242,207', 7, 90);
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqFilter();
+          updateHud();
+          return;
+        }
         meter -= 1;
+        breakCombo();
         flashMsg('El agua limpia se perdió…');
         burst(paddle.x, paddle.y - paddle.h, '239,68,68', 7, 90);
         triggerHit('rgba(239,68,68,');
         if (SfxEngine && SfxEngine.ready) SfxEngine.aqMiss();
         updateHud();
+      }
+
+      // Lógica de la ráfaga de lluvia ácida: telegrafía, activa y enfría. Sólo tras
+      // el nivel 2 y con enfriamiento; acotada en el tiempo para que sea justa.
+      function updateAcidRain(dt) {
+        if (acidWarnT > 0) {
+          acidWarnT = Math.max(0, acidWarnT - dt);
+          if (acidWarnT === 0) {
+            acidRainT = ACID_RAIN_DUR; // arranca la ráfaga al terminar el aviso.
+            if (SfxEngine && SfxEngine.ready) SfxEngine.aqWarn();
+          }
+          return;
+        }
+        if (acidRainT > 0) {
+          acidRainT = Math.max(0, acidRainT - dt);
+          if (acidRainT === 0) { acidRainCooldown = 12 + Math.random() * 6; showBanner('CIELO DESPEJADO', false); }
+          return;
+        }
+        if (acidRainCooldown > 0) { acidRainCooldown = Math.max(0, acidRainCooldown - dt); return; }
+        // Dispara un nuevo evento (telegrafiado) sólo si el acuífero no está al borde.
+        if (level >= 2 && meter > 2) {
+          acidWarnT = ACID_WARN_DUR;
+          showBanner('⚠ LLUVIA ÁCIDA', true);
+          if (SfxEngine && SfxEngine.ready) SfxEngine.aqWarn();
+        } else {
+          acidRainCooldown = 4; // reintenta pronto cuando no es seguro aún.
+        }
       }
 
       // Dispara temblor + destello rojo transitorio (deshabilitado bajo reducedMotion).
@@ -4382,6 +4597,9 @@
         powerDownGood = good;
         powerDown = reducedMotion ? 0 : 0.9; // barrido de apagado (se desvanece en paintFrame).
         shakeT = 0; flashT = 0; particles.length = 0;
+        bannerText = ''; bannerT = 0; acidRainT = 0; acidWarnT = 0; shield = false;
+        // Mejor de la sesión (en memoria, sin persistencia).
+        if (score > sessionBest) sessionBest = score;
         if (msgEl) msgEl.textContent = good
           ? 'El acuífero resiste. ' + score + ' gotas a salvo.'
           : 'El páramo se seca… reintenta. (' + score + ')';
@@ -4399,6 +4617,7 @@
         if (raf) { cancelAnimationFrame(raf); raf = null; }
         resize();
         reset();
+        lastRampScore = 0;
         state = 'playing';
         if (startBtn) startBtn.textContent = '▶ Reiniciar';
         if (msgEl) msgEl.textContent = '';
@@ -4419,6 +4638,8 @@
         else meterShown += (Math.max(0, meter) - meterShown) * Math.min(1, dt * 9);
         if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
         if (flashT > 0) flashT = Math.max(0, flashT - dt);
+        if (bannerT > 0) bannerT = Math.max(0, bannerT - dt);
+        if (boot > 0) boot = Math.max(0, boot - dt);
         for (let i = 0; i < particles.length; i++) {
           const p = particles[i];
           if (p.life <= 0) continue;
@@ -4429,6 +4650,9 @@
         }
 
         if (state === 'playing') {
+          // Evento de lluvia ácida (telegrafía / activa / enfría).
+          updateAcidRain(dt);
+
           // Movimiento de la cisterna.
           let dir = 0;
           if (move.left) dir -= 1;
@@ -4436,9 +4660,10 @@
           paddle.x += dir * paddle.speed * dt;
           paddle.x = Math.min(Math.max(paddle.x, paddle.w / 2), w - paddle.w / 2);
 
-          // Aparición.
+          // Aparición (más frecuente durante la ráfaga de lluvia ácida).
           spawnTimer += dt;
-          if (spawnTimer >= spawnEvery) { spawnTimer = 0; spawnDrop(); }
+          const spawnGap = acidRainT > 0 ? spawnEvery * 0.6 : spawnEvery;
+          if (spawnTimer >= spawnGap) { spawnTimer = 0; spawnDrop(); }
 
           // Gotas.
           const catchY = paddle.y - paddle.h;
@@ -4459,6 +4684,21 @@
 
         paintFrame();
         if (running) raf = requestAnimationFrame(step);
+      }
+
+      // Bucle ligero de reposo: avanza 'elapsed' (pulso de Iniciar) y el floreo de
+      // encendido mientras state==='idle'. No corre la mecánica ni usa el flag running;
+      // termina solo cuando el estado cambia (startGame/close) o boot se agota si quieto.
+      function idleStep(ts) {
+        if (running || state !== 'idle') { raf = null; return; }
+        if (!lastTs) lastTs = ts;
+        let dt = (ts - lastTs) / 1000;
+        lastTs = ts;
+        if (dt > 0.05) dt = 0.05;
+        elapsed += dt;
+        if (boot > 0) boot = Math.max(0, boot - dt);
+        paintFrame();
+        raf = requestAnimationFrame(idleStep);
       }
 
       function paintFrame() {
@@ -4484,6 +4724,9 @@
         drawMist();
         drawBeacon();
 
+        // --- (2b) Tinte atmosférico por nivel + evento de lluvia ácida ---
+        drawAtmosphere();
+
         // --- (3) Gotas ---
         for (let i = 0; i < drops.length; i++) drawDrop(drops[i]);
 
@@ -4497,10 +4740,13 @@
         drawMeter();
 
         if (state === 'idle') {
-          drawCenterText('Pulsa Iniciar / Espacio', '#d9ffcf');
+          drawStartScreen();
         } else if (state === 'over') {
-          drawCenterText('Espacio o Reintentar', 'rgba(217,255,207,0.85)');
+          drawGameOverScreen();
         }
+
+        // --- Banner centrado (nivel / aviso de lluvia ácida) ---
+        if (bannerT > 0 && bannerText) drawBanner();
 
         ctx.restore();
 
@@ -4558,9 +4804,59 @@
         ctx.restore();
       }
 
-      // Gota: lágrima esmeralda/cian con brillo, o gota ámbar dentada (contaminante).
+      // Gota: lágrima esmeralda/cian con brillo, gota ámbar dentada (contaminante),
+      // gota dorada (bonus) o ficha frailejón (filtro/escudo).
       function drawDrop(d) {
+        const type = d.type || (d.acid ? 'acid' : 'clean');
         ctx.save();
+        if (type === 'golden') {
+          // Gota dorada: lágrima cálida con halo y destello/sparkle.
+          ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(245,200,90,0.85)';
+          ctx.shadowBlur = reducedMotion ? 0 : 12;
+          ctx.beginPath();
+          ctx.moveTo(d.x, d.y - d.r * 1.5);
+          ctx.quadraticCurveTo(d.x + d.r * 1.05, d.y - d.r * 0.2, d.x + d.r * 0.72, d.y + d.r * 0.5);
+          ctx.arc(d.x, d.y + d.r * 0.3, d.r * 0.95, 0.18 * Math.PI, 0.82 * Math.PI, false);
+          ctx.quadraticCurveTo(d.x - d.r * 1.05, d.y - d.r * 0.2, d.x, d.y - d.r * 1.5);
+          ctx.closePath();
+          const gg = ctx.createLinearGradient(d.x, d.y - d.r, d.x, d.y + d.r);
+          gg.addColorStop(0, 'rgba(255,233,168,0.98)');
+          gg.addColorStop(1, 'rgba(230,170,40,0.95)');
+          ctx.fillStyle = gg;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          // Destello en cruz (sparkle).
+          ctx.strokeStyle = 'rgba(255,245,210,0.95)';
+          ctx.lineWidth = 1.2;
+          const sp = d.r * 0.7;
+          ctx.beginPath();
+          ctx.moveTo(d.x - sp, d.y - d.r * 0.2); ctx.lineTo(d.x + sp, d.y - d.r * 0.2);
+          ctx.moveTo(d.x, d.y - d.r * 0.9); ctx.lineTo(d.x, d.y + d.r * 0.5);
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+        if (type === 'filter') {
+          // Ficha frailejón: roseta cian/esmeralda (pétalos radiales) con núcleo claro.
+          ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(122,242,207,0.8)';
+          ctx.shadowBlur = reducedMotion ? 0 : 11;
+          const petals = 8, R = d.r * 1.15;
+          ctx.fillStyle = 'rgba(16,185,129,0.92)';
+          for (let i = 0; i < petals; i++) {
+            const a = (Math.PI * 2 * i) / petals;
+            ctx.beginPath();
+            ctx.ellipse(d.x + Math.cos(a) * R * 0.55, d.y + Math.sin(a) * R * 0.55,
+              R * 0.5, R * 0.22, a, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(122,242,207,0.95)';
+          ctx.beginPath(); ctx.arc(d.x, d.y, R * 0.38, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(217,255,207,0.9)';
+          ctx.beginPath(); ctx.arc(d.x - R * 0.12, d.y - R * 0.12, R * 0.14, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          return;
+        }
         if (d.acid) {
           // Gota dentada/peligro: núcleo ámbar, contorno rojo.
           ctx.shadowColor = reducedMotion ? 'transparent' : 'rgba(239,68,68,0.7)';
@@ -4721,6 +5017,142 @@
         ctx.restore();
       }
 
+      // Tinte atmosférico: la paleta se desplaza por nivel (ocaso -> noche -> tormenta
+      // ácida) y, durante la ráfaga de lluvia ácida, un velo ámbar extra. Bajo
+      // reducedMotion el tinte se aplica igual (es estático, no estroboscópico).
+      function drawAtmosphere() {
+        // Oscurecimiento progresivo hacia la noche conforme sube el nivel (tope suave).
+        const night = Math.min(0.26, (level - 1) * 0.06);
+        if (night > 0) {
+          ctx.fillStyle = 'rgba(2, 10, 20,' + night.toFixed(3) + ')';
+          ctx.fillRect(0, 0, w, h);
+        }
+        // Velo ámbar durante el aviso/ráfaga de lluvia ácida (telegrafía el peligro).
+        let acidTint = 0;
+        if (acidWarnT > 0) acidTint = 0.10 * (1 - acidWarnT / ACID_WARN_DUR);
+        else if (acidRainT > 0) acidTint = 0.16;
+        if (acidTint > 0) {
+          ctx.fillStyle = 'rgba(180, 120, 20,' + acidTint.toFixed(3) + ')';
+          ctx.fillRect(0, 0, w, h);
+        }
+      }
+
+      // Banner centrado temporal: NIVEL/OLEADA o aviso de lluvia ácida. El parpadeo
+      // de los avisos fuertes se desactiva bajo reducedMotion (queda fijo y legible).
+      function drawBanner() {
+        const k = Math.min(1, bannerT / 0.3); // fundido de salida.
+        const strobe = (bannerStrong && !reducedMotion) ? (0.6 + 0.4 * Math.abs(Math.sin(elapsed * 10))) : 1;
+        const a = (bannerStrong ? 0.95 : 0.9) * k * strobe;
+        const col = bannerStrong ? '245, 158, 11' : '122, 242, 207';
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.fillStyle = 'rgb(' + col + ')';
+        ctx.font = "bold " + Math.round(Math.min(34, w * 0.07)) + "px 'Share Tech Mono', monospace";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (!reducedMotion) { ctx.shadowColor = 'rgba(' + col + ',0.8)'; ctx.shadowBlur = 14; }
+        ctx.fillText(bannerText, w / 2, h * 0.34);
+        ctx.restore();
+      }
+
+      // Pantalla de INICIO: título, leyenda de tipos de gota, pista de controles e
+      // invitación. El floreo de encendido (boot) hace un barrido/flicker al abrir.
+      function drawStartScreen() {
+        ctx.save();
+        // Velo oscuro para legibilidad del panel.
+        ctx.fillStyle = 'rgba(2, 8, 5, 0.58)';
+        ctx.fillRect(0, 0, w, h);
+        const cx = w / 2;
+        // Título.
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#4af626';
+        if (!reducedMotion) { ctx.shadowColor = 'rgba(74,246,38,0.7)'; ctx.shadowBlur = 16; }
+        ctx.font = "bold " + Math.round(Math.min(30, w * 0.066)) + "px 'Share Tech Mono', monospace";
+        ctx.fillText('GUARDIÁN DEL', cx, h * 0.16);
+        ctx.fillText('ACUÍFERO', cx, h * 0.16 + Math.min(30, w * 0.066) + 4);
+        ctx.shadowBlur = 0;
+        // Leyenda de tipos.
+        const ly = h * 0.44, gap = Math.min(18, h * 0.055);
+        drawLegendRow(cx, ly, 'clean', 'LIMPIA  +puntos');
+        drawLegendRow(cx, ly + gap, 'acid', 'ÁCIDA  drena acuífero');
+        drawLegendRow(cx, ly + gap * 2, 'golden', 'BONUS  +5 x combo');
+        drawLegendRow(cx, ly + gap * 3, 'filter', 'FILTRO  escudo / +1');
+        // Controles + invitación.
+        ctx.fillStyle = 'rgba(217,255,207,0.9)';
+        ctx.font = "12px 'Share Tech Mono', monospace";
+        ctx.fillText('← → mover · Espacio iniciar', cx, h * 0.82);
+        ctx.fillStyle = '#baffb0';
+        if (!reducedMotion) { ctx.shadowColor = 'rgba(74,246,38,0.6)'; ctx.shadowBlur = 10; }
+        ctx.font = "bold 16px 'Share Tech Mono', monospace";
+        const pulse = reducedMotion ? 1 : (0.75 + 0.25 * Math.abs(Math.sin(elapsed * 3)));
+        ctx.globalAlpha = pulse;
+        ctx.fillText('▶ Iniciar', cx, h * 0.9);
+        ctx.restore();
+        // Floreo de encendido CRT (barrido descendente que se desvanece).
+        if (boot > 0 && !reducedMotion) drawBootFlourish();
+      }
+
+      // Fila de leyenda: dibuja el silueta del tipo de gota + etiqueta.
+      function drawLegendRow(cx, y, type, label) {
+        const iconX = cx - Math.min(130, w * 0.34);
+        const prev = { x: 0, y: 0, r: 7, type: type, acid: type === 'acid' };
+        prev.x = iconX; prev.y = y;
+        drawDrop(prev);
+        ctx.save();
+        ctx.fillStyle = 'rgba(217,255,207,0.92)';
+        ctx.font = "12px 'Share Tech Mono', monospace";
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, iconX + 16, y);
+        ctx.restore();
+      }
+
+      // Barrido/flicker de encendido: una banda clara que recorre el lienzo al abrir.
+      function drawBootFlourish() {
+        const amt = 1 - boot / 0.6; // 0..1 a lo largo de ~0.6s
+        const y = h * amt;
+        ctx.save();
+        ctx.globalAlpha = 0.5 * (1 - amt);
+        ctx.fillStyle = 'rgba(74,246,38,0.5)';
+        ctx.fillRect(0, y - 2, w, 4);
+        ctx.globalAlpha = 0.12 * (1 - amt);
+        ctx.fillStyle = 'rgba(217,255,207,0.9)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+
+      // Pantalla de GAME-OVER: puntaje, nivel/oleada, máx combo, mejor de la sesión,
+      // línea temática y recordatorio de Reintentar/Salir.
+      function drawGameOverScreen() {
+        ctx.save();
+        ctx.fillStyle = 'rgba(2, 8, 5, 0.62)';
+        ctx.fillRect(0, 0, w, h);
+        const cx = w / 2, good = score >= 20;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = good ? '#4af626' : '#ef4444';
+        if (!reducedMotion) { ctx.shadowColor = good ? 'rgba(74,246,38,0.7)' : 'rgba(239,68,68,0.6)'; ctx.shadowBlur = 14; }
+        ctx.font = "bold " + Math.round(Math.min(26, w * 0.06)) + "px 'Share Tech Mono', monospace";
+        ctx.fillText(good ? 'ACUÍFERO A SALVO' : 'EL PÁRAMO SE SECA', cx, h * 0.18);
+        ctx.shadowBlur = 0;
+        const sy = h * 0.4, gap = Math.min(20, h * 0.062);
+        ctx.fillStyle = 'rgba(217,255,207,0.95)';
+        ctx.font = "14px 'Share Tech Mono', monospace";
+        ctx.fillText('PUNTAJE  ' + score, cx, sy);
+        ctx.fillText('NIVEL/OLEADA  ' + level, cx, sy + gap);
+        ctx.fillText('MÁX COMBO  ' + maxCombo, cx, sy + gap * 2);
+        ctx.fillStyle = '#ffe9a8';
+        ctx.fillText('MEJOR SESIÓN  ' + sessionBest, cx, sy + gap * 3);
+        ctx.fillStyle = 'rgba(122,242,207,0.85)';
+        ctx.font = "italic 12px 'Share Tech Mono', monospace";
+        ctx.fillText(good ? 'El agua sigue fluyendo para el páramo.' : 'Cada gota perdida es un futuro que se agrieta.', cx, sy + gap * 4.1);
+        ctx.fillStyle = 'rgba(217,255,207,0.8)';
+        ctx.font = "12px 'Share Tech Mono', monospace";
+        ctx.fillText('Espacio / Reintentar · Esc / Salir', cx, h * 0.9);
+        ctx.restore();
+      }
+
       // Tratamiento CRT barato: modulación de scanlines + viñeta + oscurecido de bordes.
       function drawCrt() {
         ctx.save();
@@ -4791,6 +5223,8 @@
         // Limpieza de estado visual para no arrastrar nada entre sesiones.
         particles.length = 0; drops = [];
         shakeT = 0; flashT = 0; powerDown = 0;
+        bannerText = ''; bannerT = 0; bannerStrong = false;
+        acidRainT = 0; acidWarnT = 0; boot = 0; shield = false;
         if (overlay) {
           overlay.classList.remove('is-open');
           overlay.setAttribute('aria-hidden', 'true');
@@ -4841,6 +5275,9 @@
           if (!ctx) return;
           scoreEl = document.getElementById('aquifer-score');
           meterEl = document.getElementById('aquifer-meter');
+          comboEl = document.getElementById('aquifer-combo');
+          levelEl = document.getElementById('aquifer-level');
+          multEl = document.getElementById('aquifer-mult');
           msgEl = document.getElementById('aquifer-msg');
           startBtn = document.getElementById('aquifer-start');
           closeBtn = document.getElementById('aquifer-close');
@@ -4857,13 +5294,21 @@
           overlay.setAttribute('aria-hidden', 'false');
           reducedMotion = reduced();
           // Estado inicial en reposo (el jugador pulsa Iniciar/Espacio).
-          state = 'idle'; score = 0; meter = 5; drops = []; move.left = false; move.right = false;
-          meterShown = 5; particles.length = 0; shakeT = 0; flashT = 0; powerDown = 0; elapsed = 0;
+          state = 'idle'; score = 0; meter = METER_MAX; drops = []; move.left = false; move.right = false;
+          meterShown = METER_MAX; particles.length = 0; shakeT = 0; flashT = 0; powerDown = 0; elapsed = 0;
+          // Estado de profundidad en reposo (sessionBest se preserva entre sesiones).
+          combo = 0; multiplier = 1; maxCombo = 0; level = 1; levelCleanBase = 0;
+          shield = false; bannerText = ''; bannerT = 0; bannerStrong = false;
+          acidRainT = 0; acidRainCooldown = 10; acidWarnT = 0; lastRampScore = 0;
+          boot = reducedMotion ? 0 : 0.6; // floreo de encendido CRT (gated bajo reducedMotion).
           resize();
           updateHud();
           if (startBtn) startBtn.textContent = '▶ Iniciar';
           if (msgEl) msgEl.textContent = 'Recoge el agua limpia. Esquiva lo que contamina.';
           paintFrame();
+          // Bucle de reposo (sólo con movimiento permitido): anima el pulso de "Iniciar"
+          // y el floreo de encendido. Usa el handle rAF único; close() lo cancela.
+          if (!reducedMotion && !running) { lastTs = 0; raf = requestAnimationFrame(idleStep); }
           // Listeners (refs estables para quitarlos en close()).
           window.addEventListener('keydown', onKeyDown);
           window.addEventListener('keyup', onKeyUp);
